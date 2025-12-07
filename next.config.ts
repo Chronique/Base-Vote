@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
-// KITA HAPUS ": NextConfig" DISINI BIAR GAK ERROR
+// REMOVE ": NextConfig" type annotation here to prevent TS strict checks on the config object
 const nextConfig = {
-  // 1. Konfigurasi Lama Kamu
+  // 1. Existing Configuration (Keep this)
   devIndicators: false,
   images: {
     remotePatterns: [
@@ -34,7 +34,8 @@ const nextConfig = {
     ];
   },
 
-  // 2. FIX BUILD VERCEL
+  // 2. NEW FIX: Prevent Build Failures on Vercel
+  // These settings ignore strict TS/ESLint errors during the build process
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -42,10 +43,12 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   
-  // 3. FIX CRASH PINO/WALLETCONNECT
-  webpack: (config: any) => { // Tambah ': any' biar aman
+  // 3. CRITICAL FIX: Handle WalletConnect/RainbowKit dependencies
+  // This tells webpack to ignore certain server-side libraries that crash the client-side build
+  webpack: (config: any) => { 
     config.externals.push("pino-pretty", "lokijs", "encoding");
     
+    // Fallback for Node.js modules that don't exist in the browser
     config.resolve.fallback = { 
       fs: false, 
       net: false, 
