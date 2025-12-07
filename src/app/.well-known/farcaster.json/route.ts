@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   
-  // ⚠️ Pastikan URL ini sesuai dengan yang kamu daftarkan di Warpcast
-  // Kalau tadi kamu pakai 'base-vote-alpha', ganti yang ini jadi 'base-vote-alpha' juga
+  // Pastikan URL ini sesuai dengan URL Vercel kamu
   const appUrl = "https://base-vote-app.vercel.app"; 
 
   const config = {
@@ -17,7 +16,10 @@ export async function GET() {
       "name": "Base Vote",
       "iconUrl": `${appUrl}/icon.png`,
       "homeUrl": appUrl,
-      "imageUrl": `${appUrl}/screenshot.png`,
+      
+      // === PREVIEW PAKAI BANNER ===
+      "imageUrl": `${appUrl}/banner.png`, 
+
       "buttonTitle": "Vote Now",
       "splashImageUrl": `${appUrl}/splash.png`,
       "splashBackgroundColor": "#0052FF",
@@ -25,13 +27,10 @@ export async function GET() {
       
       "primaryCategory": "social",
       
-      // === FORMAT TAGS YANG BENAR (ARRAY) ===
+      // === TAGS DIPANGKAS JADI 2 BIAR VALID ===
       "tags": [
         "voting",
-        "polls",
-        "base",
-        "governance",
-        "web3"
+        "base"
       ]
     },
     "baseBuilder": {
