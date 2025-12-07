@@ -27,11 +27,16 @@ export async function GET() {
       
       "primaryCategory": "social",
       
-      // === TAGS DIPANGKAS JADI 2 BIAR VALID ===
+     
       "tags": [
         "voting",
         "base"
+      ],
+
+      screenshotUrls: [
+        "https://base-vote-alpha.vercel.app/screenshot.png"
       ]
+
     },
     "baseBuilder": {
        "ownerAddress": "0x4fba95e4772be6d37a0c931D00570Fe2c9675524"
