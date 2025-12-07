@@ -27,8 +27,7 @@ export async function GET() {
         "voting",
         "polls",
         "base",
-        "governance",
-        "web3"
+        "governance"
       ]
     }
   };
