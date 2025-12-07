@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "rm -rf node_modules/thread-stream/test"
   },
   "dependencies": {
     "@base-org/account": "^2.5.0",
