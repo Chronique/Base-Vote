@@ -1,54 +1,29 @@
-import { METADATA } from "../../../lib/utils";
+import { NextResponse } from "next/server";
 
 export async function GET() {
+  // Ganti URL ini dengan URL Vercel kamu yang asli
+  const appUrl = "https://base-vote-alpha.vercel.app";
+
   const config = {
-    accountAssociation: {
-      header:
-        "eyJmaWQiOjEyMTQyLCJ0eXBlIjoiY3VzdG9keSIsImtleSI6IjB4MDRlNkYxMTFlQmY2RkQyNTU3NmQ0ODA0ODA5NjI0MzVEYzNhYThEOCJ9",
-      payload: "eyJkb21haW4iOiJmcmFtZXMtdjItZGVtby1saWxhYy52ZXJjZWwuYXBwIn0",
-      signature:
-        "MHg5MGI1YzA0Zjc3MGY1M2I4M2I3OGQzOTMwNTNjMmJjZjUwNmE3ZThjNDViYmEwNDk2OTcwZTM1ZTQ0YzU2MGU1Nzc4Y2Y1ZTJkNDY2YzE1MWQxNGMzYmFjNzM3ZDcxZGEwZDVjYWJmMGMzZTdhYTc2YzRjMmQ5MmE5NDJhYjkyODFj",
+    "accountAssociation": {
+      // header dan payload ini harus digenerate lewat Farcaster Dev Portal
+      // Tapi untuk sekarang kita kosongkan atau pakai dummy agar struktur file ada dulu
+      "header": "eyJmaWQiOjE2ODksInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHgyY2Qz...EXAMPLE",
+      "payload": "eyJkb21haW4iOiJiYXNlLXZvdGUtYXBwLnZlcmNlbC5hcHAifQ...EXAMPLE",
+      "signature": "MHhiMz...EXAMPLE"
     },
-      "frame": {
-        "version": "1",
-        "name": METADATA.name,
-        "iconUrl": METADATA.iconImageUrl,
-        "homeUrl": METADATA.homeUrl,
-        "imageUrl": METADATA.bannerImageUrl,
-        "webhookUrl": `${METADATA.homeUrl}/api/webhook`,
-        "splashImageUrl": METADATA.iconImageUrl,
-        "splashBackgroundColor": METADATA.splashBackgroundColor,
-        "description": METADATA.description,
-        "ogTitle": METADATA.name,
-        "ogDescription": METADATA.description,
-        "ogImageUrl": METADATA.bannerImageUrl,
-        "primaryCategory": "developer-tools",
-        "requiredCapabilities": [
-          "actions.ready",
-          "actions.signIn", 
-          "actions.openMiniApp",
-          "actions.addMiniApp",
-          "actions.openUrl",
-          "actions.sendToken",
-          "actions.viewToken", 
-          "actions.composeCast",
-          "actions.viewProfile",
-          "actions.swapToken",
-          "actions.close",
-          "actions.viewCast",
-          "wallet.getEthereumProvider"
-        ],
-        "requiredChains": [
-          "eip155:8453",
-          "eip155:10"
-        ],
-        "noindex": false,
-        "tags": ["base", "baseapp", "miniapp", "demo", "basepay"]
-      },
-      "baseBuilder": {
-        "allowedAddresses": ["0x8342A48694A74044116F330db5050a267b28dD85"],
-      }
+    "frame": {
+      "version": "1",
+      "name": "Base Vote",
+      "iconUrl": `${appUrl}/icon.png`,
+      "homeUrl": appUrl,
+      "imageUrl": `${appUrl}/banner.png`,
+      "buttonTitle": "Vote Now",
+      "splashImageUrl": `${appUrl}/splash.png`,
+      "splashBackgroundColor": "#0052FF",
+      "webhookUrl": `${appUrl}/api/webhook`
+    }
   };
 
-  return Response.json(config);
+  return NextResponse.json(config);
 }

@@ -13,9 +13,9 @@ export const metadata: Metadata = {
   
   // Konfigurasi Open Graph (Untuk preview di sosmed)
   openGraph: {
-    title: "Base Vote - On-Chain Polling App",
+    title: "Base Vote",
     description: "Create polls, vote with your wallet, and see real-time results on Base.",
-    url: "https://base-vote-app.vercel.app", // Ganti kalau punya domain sendiri
+    url: "https://base-vote-alpha.vercel.app", // Ganti kalau punya domain sendiri
     siteName: "Base Vote",
     images: [
       {
