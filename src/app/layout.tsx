@@ -7,7 +7,7 @@ import { Providers } from "./providers";
 const inter = Inter({ subsets: ["latin"] });
 
 // GANTI URL INI DENGAN URL VERCEL KAMU YANG ASLI
-const appUrl = "https://base-vote-app.vercel.app"; 
+const appUrl = "https://base-vote-alpha.vercel.app"; 
 
 export const metadata: Metadata = {
   title: "Base Vote - Vote Everything on Base",
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   other: {
     "fc:frame": JSON.stringify({
       version: "next",
-      imageUrl: `${appUrl}/screenshot.png`, // Gambar Banner
+      imageUrl: `${appUrl}/banner.png`, // Gambar Banner
       button: {
         title: "Vote Now",
         action: {
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     siteName: "Base Vote",
     images: [
       {
-        url: `${appUrl}/screenshot.png`,
+        url: `${appUrl}/banner.png`,
         width: 1200,
         height: 630,
         alt: "Base Vote Preview",
