@@ -1,13 +1,5 @@
-// -----------------------------------------------------------------------
-// 1. ALAMAT FACTORY
-// -----------------------------------------------------------------------
-// ⚠️ PENTING: Ganti dengan Alamat Kontrak BARU kamu dari Remix
-export const FACTORY_ADDRESS = "0x18f37f9c0723ff3ed6a0847a5c3cb216d5fbc5b6"; 
+export const FACTORY_ADDRESS = "0x54287C56A7545A42A5d0Bef23Aff3e9813eB6422";
 
-
-// -----------------------------------------------------------------------
-// 2. ABI FACTORY (Sesuai yang kamu kirim barusan)
-// -----------------------------------------------------------------------
 export const FACTORY_ABI = [
   {
     "anonymous": false,
@@ -46,36 +38,52 @@ export const FACTORY_ABI = [
   }
 ] as const;
 
-
-// -----------------------------------------------------------------------
-// 3. ABI SINGLE POLL (Untuk Kartu Voting & Baca Hasil)
-// -----------------------------------------------------------------------
+// === POLL ABI (V2 - LENGKAP) ===
 export const POLL_ABI = [
   {
-    "inputs": [{ "internalType": "uint256", "name": "_option", "type": "uint256" }],
+    "inputs": [{ "internalType": "uint8", "name": "_option", "type": "uint8" }],
     "name": "vote",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  // === INI YANG TADI HILANG (hasVoted) ===
+  {
+    "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "name": "hasVoted",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [],
     "name": "getPollInfo",
     "outputs": [
-      { "internalType": "string", "name": "q", "type": "string" },
-      { "internalType": "string", "name": "o1", "type": "string" },
-      { "internalType": "uint256", "name": "c1", "type": "uint256" },
-      { "internalType": "string", "name": "o2", "type": "string" },
-      { "internalType": "uint256", "name": "c2", "type": "uint256" },
-      { "internalType": "uint256", "name": "end", "type": "uint256" }
+      { "internalType": "string", "name": "", "type": "string" },
+      { "internalType": "string", "name": "", "type": "string" },
+      { "internalType": "uint256", "name": "", "type": "uint256" },
+      { "internalType": "string", "name": "", "type": "string" },
+      { "internalType": "uint256", "name": "", "type": "uint256" },
+      { "internalType": "uint256", "name": "", "type": "uint256" }
     ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
-    "name": "hasVotedCheck",
-    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "inputs": [],
+    "name": "getVoters",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "address", "name": "voter", "type": "address" },
+          { "internalType": "uint8", "name": "choice", "type": "uint8" },
+          { "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+        ],
+        "internalType": "struct Poll.VoterInfo[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   }

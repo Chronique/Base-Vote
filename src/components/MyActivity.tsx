@@ -1,14 +1,44 @@
 "use client";
 
 import { useState } from "react";
-import { useReadContract } from "wagmi";
-import { FACTORY_ABI, FACTORY_ADDRESS } from "~/app/constants";
-import QuestCard from "./QuestCard";
-// Import Icon Person disini
-import { MdPerson } from "react-icons/md";
+import { useAccount, useReadContract } from "wagmi";
+import { FACTORY_ABI, FACTORY_ADDRESS, POLL_ABI } from "~/app/constants";
+import { MdHowToVote, MdClose, MdVisibility } from "react-icons/md";
+import VoterList from "./VoterList"; // Import komponen baru tadi
 
+// --- COMPONENT UNTUK SATU ITEM POLL ---
+function PollItem({ address, onClick }: { address: string, onClick: () => void }) {
+  const { data: pollData } = useReadContract({
+    address: address as `0x${string}`,
+    abi: POLL_ABI,
+    functionName: "getPollInfo",
+  });
+
+  if (!pollData) return null;
+  const [question, , count1, , count2] = pollData as any;
+  const total = Number(count1) + Number(count2);
+
+  return (
+    <div 
+        onClick={onClick}
+        className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 rounded-xl shadow-sm mb-3 cursor-pointer hover:border-blue-500 transition-all group"
+    >
+      <div className="flex justify-between items-start">
+          <h3 className="font-bold text-md text-gray-800 dark:text-gray-200 line-clamp-1">{question}</h3>
+          <MdVisibility className="text-gray-300 group-hover:text-blue-500" />
+      </div>
+      <div className="mt-2 flex justify-between text-xs text-gray-500 dark:text-gray-400">
+        <span>Total Votes: <span className="font-bold text-blue-600">{total}</span></span>
+        <span className="text-[10px] bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">Click to see voters</span>
+      </div>
+    </div>
+  );
+}
+
+// --- MAIN COMPONENT ---
 export default function MyActivity() {
-  const [filter, setFilter] = useState<"voted" | "all">("voted");
+  const { address } = useAccount();
+  const [selectedPoll, setSelectedPoll] = useState<string | null>(null);
 
   const { data: allPolls, isLoading } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
@@ -16,66 +46,42 @@ export default function MyActivity() {
     functionName: "getAllPolls",
   });
 
-  if (isLoading) return <p className="text-center mt-10 animate-pulse text-gray-400">Loading Profile...</p>;
+  if (isLoading) return <div className="text-center mt-10">Loading...</div>;
+  if (!allPolls) return <div className="text-center mt-10">No activity found.</div>;
 
-  if (!allPolls || allPolls.length === 0) {
-    return <p className="text-center mt-10 text-gray-400">No activity yet.</p>;
-  }
+  const myPolls = (allPolls as string[]).slice().reverse(); // Tampilkan semua poll (atau filter by creator kalau mau)
 
   return (
-    <div className="w-full relative min-h-screen">
+    <div className="pb-20">
+      <h2 className="text-xl font-black mb-4 px-1 text-gray-800 dark:text-white">Recent Activity</h2>
       
-      {/* === HEADER GABUNGAN (STICKY) === */}
-      {/* Kita kasih bg-white solid supaya konten di bawahnya gak tembus pandang saat discroll */}
-      <div className="sticky top-[60px] z-30 bg-white pt-2 pb-4 shadow-sm mb-4 -mx-4 px-4">
-        
-        {/* 1. Icon & Judul (Kita pindah kesini) */}
-        <div className="flex flex-col items-center justify-center mb-4 pt-2">
-            <div className="p-3 bg-blue-50 rounded-full text-blue-600 mb-2">
-                <MdPerson className="text-3xl" />
+      {myPolls.map((pollAddr) => (
+        <PollItem 
+            key={pollAddr} 
+            address={pollAddr} 
+            onClick={() => setSelectedPoll(pollAddr)} 
+        />
+      ))}
+
+      {/* === MODAL POPUP LIHAT VOTERS === */}
+      {selectedPoll && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-gray-950 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-800">
+            
+            {/* Header Modal */}
+            <div className="flex justify-between items-center p-4 border-b border-gray-100 dark:border-gray-800">
+                <h3 className="font-bold text-lg">Voters List</h3>
+                <button onClick={() => setSelectedPoll(null)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
+                    <MdClose className="text-xl" />
+                </button>
             </div>
-            <h2 className="text-xl font-bold text-gray-900">My Activity</h2>
+
+            {/* List Voter (Komponen yang kita buat tadi) */}
+            <VoterList pollAddress={selectedPoll} />
+
+          </div>
         </div>
-
-        {/* 2. Tombol Filter */}
-        <div className="flex p-1 bg-gray-100 rounded-xl">
-          <button
-            onClick={() => setFilter("voted")}
-            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
-              filter === "voted" ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Voted by Me
-          </button>
-          <button
-            onClick={() => setFilter("all")}
-            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
-              filter === "all" ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            All History
-          </button>
-        </div>
-      </div>
-
-      {/* === LIST KARTU === */}
-      {/* Konten akan mengalir di bawah header sticky di atas */}
-      <div className="space-y-4 pb-20">
-        {[...allPolls].reverse().map((pollAddress) => (
-          <QuestCard 
-            key={pollAddress} 
-            address={pollAddress} 
-            filterType={filter === "voted" ? "voted" : undefined} 
-          />
-        ))}
-
-        {filter === "voted" && (
-            <p className="text-center text-xs text-gray-400 pt-8 pb-4">
-            — End of your voting history —
-            </p>
-        )}
-      </div>
-      
+      )}
     </div>
   );
 }
