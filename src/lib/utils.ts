@@ -1,16 +1,21 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export const METADATA = {
-  name: "Base Mini App Demo",
-  description: "A demo mini app for testing capabilities on Base",
-  bannerImageUrl: 'https://i.imgur.com/2bsV8mV.png',
-  iconImageUrl: 'https://i.imgur.com/brcnijg.png',
-  // homeUrl: process.env.NEXT_PUBLIC_URL ?? "https://frames-v2-demo-lilac.vercel.app",
-  homeUrl: "https://frames-v2-demo-lilac.vercel.app",
-  splashBackgroundColor: "#FFFFFF"
-}
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
+
+// === GANTI URL INI DENGAN URL VERCEL KAMU ===
+const APP_URL = "https://base-vote-alpha.vercel.app"; 
+
+export const METADATA = {
+  title: "Base Vote",
+  description: "Create polls and vote on Base",
+  // Gambar Banner saat di-share di Farcaster
+  bannerImageUrl: `${APP_URL}/banner.png`, 
+  // Icon kecil
+  iconImageUrl: `${APP_URL}/icon.png`,
+  homeUrl: APP_URL,
+  splashBackgroundColor: "#0052FF", // Warna Biru Base
+  splashImageUrl: `${APP_URL}/splash.png`,
+};
