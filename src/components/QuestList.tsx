@@ -30,7 +30,7 @@ export default function QuestList() {
   if (currentIndex >= polls.length) {
     return (
       <div className="text-center mt-20">
-        <h3 className="text-xl font-bold mb-2">You've seen it all! 🎉</h3>
+        <h3 className="text-xl font-bold mb-2">Touch grass</h3>
         <button 
           onClick={() => setCurrentIndex(0)} 
           className="text-blue-600 font-bold underline"
