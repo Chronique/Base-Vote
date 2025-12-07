@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Tambah useEffect
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import CreateQuest from "~/components/CreateQuest";
 import QuestList from "~/components/QuestList";
 import MyActivity from "~/components/MyActivity"; 
 import { METADATA } from "~/lib/utils";
 
-// Import Icon Baru (MdBallot untuk simbol pemilu)
+// Import SDK Farcaster
+import { sdk } from "@farcaster/miniapp-sdk"; 
+
+// Import Icon
 import { MdHomeFilled, MdAddCircle, MdPerson, MdHowToVote, MdBallot } from "react-icons/md";
 
 const frame = {
@@ -18,6 +21,20 @@ const frame = {
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"feed" | "create" | "profile">("feed");
+
+  // === WAJIB: PANGGIL SDK READY ===
+  useEffect(() => {
+    const init = async () => {
+      try {
+        // Memberitahu Farcaster bahwa aplikasi sudah siap tampil
+        await sdk.actions.ready(); 
+      } catch (err) {
+        console.error("Failed to initialize Farcaster SDK:", err);
+      }
+    };
+    
+    init();
+  }, []);
 
   return (
     <main className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans flex flex-col pb-24 transition-colors duration-300">
@@ -31,7 +48,7 @@ export default function Home() {
                 <MdHowToVote className="text-white text-2xl" />
             </div>
 
-            {/* JUDUL & SUBTITLE BARU */}
+            {/* JUDUL & SUBTITLE */}
             <div className="flex flex-col">
                 <h1 className="font-black text-xl leading-none tracking-tighter text-gray-900 dark:text-white">
                     BASE <span className="text-blue-600">VOTE</span>
@@ -53,7 +70,6 @@ export default function Home() {
           // === TAB CREATE ===
           <div className="animate-in fade-in slide-in-from-bottom-2">
              <div className="flex items-center gap-2 mb-6 justify-center text-gray-800 dark:text-gray-200">
-                {/* ICON PEMILU (Ballot) */}
                 <MdBallot className="text-3xl text-blue-600 dark:text-blue-500" />
                 <h2 className="text-2xl font-bold">Create New Poll</h2>
              </div>
