@@ -5,17 +5,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// === GANTI URL INI DENGAN URL VERCEL KAMU ===
-const APP_URL = "https://base-vote-alpha.vercel.app"; 
+const APP_URL = "https://base-vote-app.vercel.app"; 
 
 export const METADATA = {
   title: "Base Vote",
   description: "Create polls and vote on Base",
-  // Gambar Banner saat di-share di Farcaster
-  bannerImageUrl: `${APP_URL}/banner.png`, 
-  // Icon kecil
+  
+  // === UPDATE KE SCREENSHOT.PNG ===
+  bannerImageUrl: `${APP_URL}/screenshot.png`, 
+  
   iconImageUrl: `${APP_URL}/icon.png`,
   homeUrl: APP_URL,
-  splashBackgroundColor: "#0052FF", // Warna Biru Base
+  splashBackgroundColor: "#0052FF",
   splashImageUrl: `${APP_URL}/splash.png`,
 };

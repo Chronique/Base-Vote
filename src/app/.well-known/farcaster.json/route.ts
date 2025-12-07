@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   
-  const appUrl = "https://base-vote-alpha.vercel.app";
+  // Pastikan URL ini sesuai dengan URL Vercel kamu
+  const appUrl = "https://base-vote-app.vercel.app"; 
 
   const config = {
     "accountAssociation": {
@@ -15,20 +16,16 @@ export async function GET() {
       "name": "Base Vote",
       "iconUrl": `${appUrl}/icon.png`,
       "homeUrl": appUrl,
-      "imageUrl": `${appUrl}/banner.png`,
+      
+      // === UPDATE KE SCREENSHOT.PNG ===
+      "imageUrl": `${appUrl}/screenshot.png`, 
+
       "buttonTitle": "Vote Now",
       "splashImageUrl": `${appUrl}/splash.png`,
       "splashBackgroundColor": "#0052FF",
       "webhookUrl": `${appUrl}/api/webhook`,
-      
-      // === TAMBAHAN BARU (WAJIB) ===
       "primaryCategory": "social",
-      "tags": [
-        "voting",
-        "polls",
-        "base",
-        "governance"
-      ]
+      "tags": ["voting", "polls", "base", "governance", "web3"]
     }
   };
 
