@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
-// KITA HAPUS ": NextConfig" DISINI BIAR GAK ERROR
+
 const nextConfig = {
-  // 1. Konfigurasi Lama Kamu
+  
   devIndicators: false,
   images: {
     remotePatterns: [
@@ -34,7 +34,7 @@ const nextConfig = {
     ];
   },
 
-  // 2. FIX BUILD VERCEL (Abaikan Error Kecil)
+  
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -42,11 +42,10 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
 
-  // 3. SOLUSI UTAMA (Server External Packages)
-  // Ini memerintahkan Next.js untuk TIDAK memproses library ini saat build
+  
   serverExternalPackages: ["pino", "pino-pretty", "lokijs", "encoding", "thread-stream"],
   
-  // 4. FIX WEBPACK (Backup jika Turbopack gagal)
+  // 4. FIX WEBPACK 
   webpack: (config: any) => { 
     config.externals.push("pino-pretty", "lokijs", "encoding");
     

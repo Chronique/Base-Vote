@@ -5,11 +5,13 @@ import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { FACTORY_ABI, FACTORY_ADDRESS } from "~/app/constants";
 
 export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
-  const [question, setQuestion] = useState("");
-  const [opt1, setOpt1] = useState("");
-  const [opt2, setOpt2] = useState("");
-  // Default 24 Jam (86400 detik)
-  const [duration, setDuration] = useState("86400"); 
+  // === MOCK DATA: PRE-FILL FORMULIR (Supaya pas screenshot terlihat berisi) ===
+  const [question, setQuestion] = useState("Should we launch Base Native Token?");
+  const [opt1, setOpt1] = useState("Yes, LFG! 🔵");
+  const [opt2, setOpt2] = useState("No, ETH is fine");
+  
+  // Default 7 Hari (Sesuai request tanpa icon)
+  const [duration, setDuration] = useState("604800"); 
 
   const { writeContract, data: hash, isPending } = useWriteContract();
   const { isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
@@ -75,10 +77,11 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
               onChange={(e) => setDuration(e.target.value)} 
               className="w-full p-3 border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-white cursor-pointer transition-colors"
            >
-              <option value="86400">📅 24 Hours</option>
-              <option value="604800">🗓️ 7 Days</option>
-              <option value="2592000">🌕 1 Month</option>
-              <option value="31536000">🎆 1 Year</option>
+              {/* REQUEST BARU: Tanpa Icon, Text Bersih */}
+              <option value="86400">24 Hours</option>
+              <option value="604800">7 Days</option>
+              <option value="2592000">1 Month</option>
+              <option value="31536000">1 Year</option>
            </select>
         </div>
 
