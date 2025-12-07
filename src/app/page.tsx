@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-// ... imports lainnya tetap sama ...
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import CreateQuest from "~/components/CreateQuest";
 import QuestList from "~/components/QuestList";
@@ -12,41 +11,37 @@ import { useConnect, useAccount } from "wagmi";
 import { MdHomeFilled, MdAddCircle, MdPerson, MdHowToVote, MdBallot } from "react-icons/md";
 
 export default function Home() {
-  // SET ACTIVE TAB KE 'CREATE' SUPAYA PAS DIBUKA LANGSUNG MODENYA BUAT VOTE
-  const [activeTab, setActiveTab] = useState<"feed" | "create" | "profile">("create");
+  // KEMBALIKAN DEFAULT KE FEED
+  const [activeTab, setActiveTab] = useState<"feed" | "create" | "profile">("feed");
   
-  // === MOCK DATA JESSE POLLAK ===
-  // Kita isi default state-nya langsung dengan data Jesse
-  const [farcasterUser, setFarcasterUser] = useState<{ pfpUrl?: string; username?: string } | null>({
-    username: "jessepollak",
-    pfpUrl: "https://i.imgur.com/4K7c5Ig.png" // (Placeholder mirip Jesse atau pakai link asli kalau ada)
-  });
+  // KEMBALIKAN KE NULL (KOSONG)
+  const [farcasterUser, setFarcasterUser] = useState<{ pfpUrl?: string; username?: string } | null>(null);
 
   const { connect, connectors } = useConnect();
   const { isConnected } = useAccount();
 
-  // ... sisa kode initializeFarcaster dan return di bawahnya TETAP SAMA ...
-  // ... pastikan tidak menghapus logika initializeFarcaster yang asli ...
-  
   const initializeFarcaster = useCallback(async () => {
-     try {
-       const context = await sdk.context;
-       // KITA KOMENTARI BAGIAN INI SUPAYA TIDAK TIMPA MOCK JESSE SAAT DI LOCALHOST
-       /* if (context?.user) {
-         setFarcasterUser({
-           pfpUrl: context.user.pfpUrl,
-           username: context.user.username,
-         });
-       }
-       */
-       await sdk.actions.ready();
-       if (!isConnected) {
-         const farcasterConnector = connectors.find((c) => c.id === "farcasterFrame");
-         if (farcasterConnector) connect({ connector: farcasterConnector });
-       }
-     } catch (err) {
-       console.error(err);
-     }
+    try {
+      // 1. AKTIFKAN LAGI LOGIKA INI (HAPUS KOMENTAR)
+      const context = await sdk.context;
+      if (context?.user) {
+        setFarcasterUser({
+          pfpUrl: context.user.pfpUrl,
+          username: context.user.username,
+        });
+      }
+
+      await sdk.actions.ready();
+
+      if (!isConnected) {
+        const farcasterConnector = connectors.find((c) => c.id === "farcasterFrame");
+        if (farcasterConnector) {
+          connect({ connector: farcasterConnector });
+        }
+      }
+    } catch (err) {
+      console.error("Farcaster Init Error:", err);
+    }
   }, [connect, connectors, isConnected]);
 
   useEffect(() => {
@@ -54,8 +49,6 @@ export default function Home() {
   }, [initializeFarcaster]);
 
   return (
-    // ... render UI (nav, dll) tetap sama ...
-    // ... hanya pastikan copy-paste bagian atas tadi ...
     <main className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans flex flex-col pb-24 transition-colors duration-300">
       
       {/* HEADER */}
@@ -75,7 +68,7 @@ export default function Home() {
             </div>
         </div>
 
-        {/* PROFIL JESSE POLLAK MUNCUL DISINI */}
+        {/* PROFIL USER ASLI */}
         <div>
           {farcasterUser ? (
             <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 pr-4 pl-1 py-1 rounded-full border border-gray-200 dark:border-gray-700">
@@ -92,7 +85,8 @@ export default function Home() {
                </span>
             </div>
           ) : (
-            <div className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-sm">Login via Warpcast</div>
+            // TOMBOL FALLBACK (Kalau dibuka di browser biasa)
+            <ConnectButton showBalance={false} accountStatus="avatar" chainStatus="none" />
           )}
         </div>
       </nav>
@@ -122,13 +116,13 @@ export default function Home() {
 
       {/* BOTTOM NAV */}
       <div className="fixed bottom-0 w-full bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex justify-around py-3 z-40 pb-6 max-w-lg mx-auto left-0 right-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] transition-colors">
-        <button onClick={() => setActiveTab("feed")} className={`flex flex-col items-center gap-1 w-1/3 transition-colors ${activeTab === "feed" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-600"}`}>
+        <button onClick={() => setActiveTab("feed")} className={`flex flex-col items-center gap-1 w-1/3 transition-colors ${activeTab === "feed" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400"}`}>
           <MdHomeFilled className="text-2xl" /><span className="text-[10px] font-bold tracking-wide">FEED</span>
         </button>
-        <button onClick={() => setActiveTab("create")} className={`flex flex-col items-center gap-1 w-1/3 transition-colors ${activeTab === "create" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-600"}`}>
+        <button onClick={() => setActiveTab("create")} className={`flex flex-col items-center gap-1 w-1/3 transition-colors ${activeTab === "create" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400"}`}>
           <MdAddCircle className="text-2xl" /><span className="text-[10px] font-bold tracking-wide">CREATE</span>
         </button>
-        <button onClick={() => setActiveTab("profile")} className={`flex flex-col items-center gap-1 w-1/3 transition-colors ${activeTab === "profile" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-600"}`}>
+        <button onClick={() => setActiveTab("profile")} className={`flex flex-col items-center gap-1 w-1/3 transition-colors ${activeTab === "profile" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400"}`}>
           <MdPerson className="text-2xl" /><span className="text-[10px] font-bold tracking-wide">PROFILE</span>
         </button>
       </div>
