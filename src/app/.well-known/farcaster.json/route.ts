@@ -16,16 +16,17 @@ export async function GET() {
       "name": "Base Vote",
       "iconUrl": `${appUrl}/icon.png`,
       "homeUrl": appUrl,
-      
-      // === UPDATE KE SCREENSHOT.PNG ===
-      "imageUrl": `${appUrl}/screenshot.png`, 
-
+      "imageUrl": `${appUrl}/screenshot.png`,
       "buttonTitle": "Vote Now",
       "splashImageUrl": `${appUrl}/splash.png`,
       "splashBackgroundColor": "#0052FF",
       "webhookUrl": `${appUrl}/api/webhook`,
       "primaryCategory": "social",
       "tags": ["voting", "polls", "base", "governance", "web3"]
+    },
+    // === TAMBAHAN OWNER ADDRESS ===
+    "baseBuilder": {
+       "ownerAddress": "0x4fba95e4772be6d37a0c931D00570Fe2c9675524"
     }
   };
 

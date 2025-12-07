@@ -6,20 +6,40 @@ import { Providers } from "./providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
-// === KONFIGURASI METADATA ===
+// GANTI URL INI DENGAN URL VERCEL KAMU YANG ASLI
+const appUrl = "https://base-vote-app.vercel.app"; 
+
 export const metadata: Metadata = {
   title: "Base Vote - Vote Everything on Base",
-  description: "The easiest way to create and participate in on-chain polls on the Base network. Transparent, immutable, and fun.",
+  description: "The easiest way to create and participate in on-chain polls on the Base network.",
   
-  // Konfigurasi Open Graph (Untuk preview di sosmed)
+  // === INI KUNCINYA: METADATA FRAME V2 ===
+  other: {
+    "fc:frame": JSON.stringify({
+      version: "next",
+      imageUrl: `${appUrl}/screenshot.png`, // Gambar Banner
+      button: {
+        title: "Vote Now",
+        action: {
+          type: "launch_frame",
+          name: "Base Vote",
+          url: appUrl, // URL Aplikasi
+          splashImageUrl: `${appUrl}/splash.png`,
+          splashBackgroundColor: "#0052FF"
+        }
+      }
+    })
+  },
+
+  // Open Graph (Untuk Twitter/WA)
   openGraph: {
     title: "Base Vote",
-    description: "Create polls, vote with your wallet, and see real-time results on Base.",
-    url: "https://base-vote-alpha.vercel.app", // Ganti kalau punya domain sendiri
+    description: "Create polls and vote on Base.",
+    url: appUrl,
     siteName: "Base Vote",
     images: [
       {
-        url: "https://placehold.co/1200x630/0052FF/ffffff?text=Base+Vote", // Banner sementara (bisa diganti)
+        url: `${appUrl}/screenshot.png`,
         width: 1200,
         height: 630,
         alt: "Base Vote Preview",
@@ -27,14 +47,6 @@ export const metadata: Metadata = {
     ],
     locale: "en_US",
     type: "website",
-  },
-
-  // Konfigurasi Twitter Card
-  twitter: {
-    card: "summary_large_image",
-    title: "Base Vote",
-    description: "Vote everything on Base. Decentralized and verifiable.",
-    images: ["https://placehold.co/1200x630/0052FF/ffffff?text=Base+Vote"], // Sama dengan atas
   },
 };
 
