@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   
-  // Pastikan URL ini sesuai dengan URL Vercel kamu
-  const appUrl = "https://base-vote-app.vercel.app"; 
+  // Kita tidak pakai variabel lagi di dalam JSON biar pasti benar
+  // Pastikan domain ini 'base-vote-alpha' atau 'base-vote-app' (sesuai yang aktif di Vercel)
+  const appUrl = "https://base-vote-alpha.vercel.app"; 
 
   const config = {
     "accountAssociation": {
@@ -14,29 +15,22 @@ export async function GET() {
     "frame": {
       "version": "1",
       "name": "Base Vote",
-      "iconUrl": `${appUrl}/icon.png`,
-      "homeUrl": appUrl,
       
-      // === PREVIEW PAKAI BANNER ===
-      "imageUrl": `${appUrl}/banner.png`, 
-
+      // === HARDCODED URL (Lebih Aman) ===
+      "iconUrl": "https://base-vote-alpha.vercel.app/icon.png",
+      "homeUrl": "https://base-vote-alpha.vercel.app",
+      "imageUrl": "https://base-vote-alpha.vercel.app/banner.png", 
       "buttonTitle": "Vote Now",
-      "splashImageUrl": `${appUrl}/splash.png`,
+      "splashImageUrl": "https://base-vote-alpha.vercel.app/splash.png",
+      
       "splashBackgroundColor": "#0052FF",
-      "webhookUrl": `${appUrl}/api/webhook`,
+      "webhookUrl": "https://base-vote-alpha.vercel.app/api/webhook",
       
       "primaryCategory": "social",
-      
-     
       "tags": [
         "voting",
         "base"
-      ],
-
-      screenshotUrls: [
-        "https://base-vote-alpha.vercel.app/screenshot.png"
       ]
-
     },
     "baseBuilder": {
        "ownerAddress": "0x4fba95e4772be6d37a0c931D00570Fe2c9675524"
