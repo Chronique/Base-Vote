@@ -1,9 +1,9 @@
 "use client";
 
-import { useReadContract } from "wagmi";
+import { useReadContract, useWriteContract } from "wagmi"; // Tambah useWriteContract
 import { POLL_ABI } from "~/app/constants";
 import { motion, useMotionValue, useTransform } from "framer-motion";
-import { MdHowToVote, MdArrowBack, MdArrowForward } from "react-icons/md"; // Tambah icon panah biar jelas
+import { MdHowToVote, MdArrowBack, MdArrowForward } from "react-icons/md";
 import { useTheme } from "next-themes"; 
 
 interface Props {
@@ -14,6 +14,9 @@ interface Props {
 
 export default function SwipeCard({ address, onSwipe, index }: Props) {
   const { resolvedTheme } = useTheme();
+  
+  // 1. SIAPKAN FUNGSI WRITE CONTRACT
+  const { writeContract } = useWriteContract();
 
   const { data: pollData } = useReadContract({
     address: address as `0x${string}`,
@@ -32,8 +35,8 @@ export default function SwipeCard({ address, onSwipe, index }: Props) {
 
   if (!pollData) return null;
 
-  const [question, , count1, , count2] = pollData as [string, string, bigint, string, bigint, bigint];
-  
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [question, , count1, , count2] = pollData as any;
   const total = Number(count1) + Number(count2);
   const scale = index === 0 ? 1 : 0.95;
   const y = index === 0 ? 0 : 10;
@@ -44,8 +47,25 @@ export default function SwipeCard({ address, onSwipe, index }: Props) {
       drag={index === 0 ? "x" : false}
       dragConstraints={{ left: 0, right: 0 }}
       onDragEnd={(e, info) => {
-        if (info.offset.x > 100) onSwipe("right");
-        else if (info.offset.x < -100) onSwipe("left");
+        // === LOGIKA SWIPE DIGANTI DISINI ===
+        
+        // 1. SWIPE KANAN (VOTE OPTION 1)
+        if (info.offset.x > 100) {
+            // Panggil Wallet untuk Vote Option 1
+            writeContract({
+                address: address as `0x${string}`,
+                abi: POLL_ABI,
+                functionName: "vote",
+                args: [1], // Vote Opsi 1 (Yes/First)
+            });
+            // Lanjut animasi kartu berikutnya
+            onSwipe("right");
+        } 
+        // 2. SWIPE KIRI (SKIP)
+        else if (info.offset.x < -100) {
+            // Cuma skip, tidak panggil contract
+            onSwipe("left");
+        }
       }}
       className={`absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center p-6 cursor-grab active:cursor-grabbing text-center z-${10 - index}`}
     >
@@ -61,17 +81,16 @@ export default function SwipeCard({ address, onSwipe, index }: Props) {
         {total} people voted
       </p>
 
-      {/* === BAGIAN INI YANG DIUPDATE === */}
       <div className="absolute bottom-6 flex justify-between w-full px-8">
         
-        {/* Tombol Kiri (SKIP) */}
+        {/* Indikator Kiri */}
         <div className="flex items-center gap-1 text-red-400/80 dark:text-red-500/80 font-black text-xs tracking-widest">
             <MdArrowBack /> SKIP
         </div>
 
-        {/* Tombol Kanan (VOTE) */}
+        {/* Indikator Kanan */}
         <div className="flex items-center gap-1 text-blue-500/80 dark:text-blue-400/80 font-black text-xs tracking-widest">
-            VOTE <MdArrowForward />
+            VOTE (YES) <MdArrowForward />
         </div>
 
       </div>
