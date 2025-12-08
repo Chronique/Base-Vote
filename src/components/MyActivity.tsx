@@ -3,16 +3,31 @@
 import { useState } from "react";
 import { useAccount, useReadContract } from "wagmi";
 import { FACTORY_ABI, FACTORY_ADDRESS, POLL_ABI } from "~/app/constants";
-import { MdClose, MdVisibility, MdPerson, MdPublic } from "react-icons/md";
+import { MdClose, MdVisibility, MdPerson, MdPublic, MdHistory } from "react-icons/md";
 import VoterList from "./VoterList";
 
-// --- COMPONENT POLL ITEM ---
-function PollItem({ address, onClick }: { address: string, onClick: () => void }) {
+// --- COMPONENT ITEM (Dengan Logika Filter) ---
+function PollItem({ address, onClick, filterMode }: { address: string, onClick: () => void, filterMode: "all" | "mine" }) {
+  const { address: userAddress } = useAccount();
+
+  // 1. Ambil Data Poll
   const { data: pollData } = useReadContract({
     address: address as `0x${string}`,
     abi: POLL_ABI,
     functionName: "getPollInfo",
   });
+
+  // 2. Cek Status Vote User (Khusus untuk Tab My History)
+  const { data: hasVoted } = useReadContract({
+    address: address as `0x${string}`,
+    abi: POLL_ABI,
+    functionName: "hasVoted",
+    args: userAddress ? [userAddress] : undefined,
+  });
+
+  // LOGIKA FILTER: 
+  // Jika tab "mine" (My History) TAPI user belum vote, jangan tampilkan (return null)
+  if (filterMode === "mine" && !hasVoted) return null;
 
   if (!pollData) return null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -22,7 +37,7 @@ function PollItem({ address, onClick }: { address: string, onClick: () => void }
   return (
     <div 
         onClick={onClick}
-        className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 rounded-xl shadow-sm mb-3 cursor-pointer hover:border-blue-500 transition-all group"
+        className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 rounded-xl shadow-sm mb-3 cursor-pointer hover:border-blue-500 transition-all group animate-in fade-in slide-in-from-bottom-2"
     >
       <div className="flex justify-between items-start">
           <h3 className="font-bold text-md text-gray-800 dark:text-gray-200 line-clamp-1">{question}</h3>
@@ -30,7 +45,9 @@ function PollItem({ address, onClick }: { address: string, onClick: () => void }
       </div>
       <div className="mt-2 flex justify-between text-xs text-gray-500 dark:text-gray-400">
         <span>Total Votes: <span className="font-bold text-blue-600">{total}</span></span>
-        <span className="text-[10px] bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">See voters</span>
+        <span className="text-[10px] bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
+            {filterMode === 'mine' ? "You Voted ✅" : "See voters"}
+        </span>
       </div>
     </div>
   );
@@ -38,10 +55,9 @@ function PollItem({ address, onClick }: { address: string, onClick: () => void }
 
 // --- MAIN COMPONENT ---
 export default function MyActivity() {
-  const { address: myAddress } = useAccount();
   const [selectedPoll, setSelectedPoll] = useState<string | null>(null);
   
-  // STATE UNTUK TAB (All Polls vs My Polls)
+  // Tab State
   const [filterMode, setFilterMode] = useState<"all" | "mine">("all");
 
   const { data: allPolls, isLoading, refetch } = useReadContract({
@@ -50,30 +66,18 @@ export default function MyActivity() {
     functionName: "getAllPolls",
   });
 
-  // Tombol Refresh Manual (Solusi delay blockchain)
-  const handleRefresh = () => {
-    refetch();
-  };
-
   if (isLoading) return <div className="text-center mt-10 animate-pulse text-gray-400">Loading blockchain data...</div>;
   
   const polls = (allPolls as string[] || []).slice().reverse();
 
-  // LOGIKA FILTERING
-  // Catatan: Untuk filter "My Polls" secara sempurna, kita harus baca creator tiap poll.
-  // Tapi untuk efisiensi di sisi klien tanpa indexer, kita tampilkan semua dulu di "All".
-  // "My Polls" di sini bisa kita artikan sebagai history vote (tapi data itu ada di sisi user interaction).
-  // SEMENTARA: Kita biarkan "My Polls" menampilkan semua poll dulu, atau kamu bisa implementasi logic filter creator nanti.
-  // Agar tidak berat, kita pakai tab UI saja dulu.
-
   return (
     <div className="pb-20">
       
-      {/* HEADER + REFRESH */}
+      {/* HEADER */}
       <div className="flex justify-between items-center mb-4 px-1">
         <h2 className="text-xl font-black text-gray-800 dark:text-white">Activity</h2>
-        <button onClick={handleRefresh} className="text-xs text-blue-600 font-bold hover:underline">
-            Refresh Data
+        <button onClick={() => refetch()} className="text-xs text-blue-600 font-bold hover:underline">
+            Refresh
         </button>
       </div>
 
@@ -89,7 +93,7 @@ export default function MyActivity() {
             onClick={() => setFilterMode("mine")}
             className={`flex-1 py-2 rounded-md text-xs font-bold flex items-center justify-center gap-1 transition-all ${filterMode === "mine" ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600" : "text-gray-400"}`}
         >
-            <MdPerson /> All History
+            <MdHistory /> My History
         </button>
       </div>
       
@@ -101,9 +105,15 @@ export default function MyActivity() {
             <PollItem 
                 key={pollAddr} 
                 address={pollAddr} 
+                filterMode={filterMode} // Pass filter mode ke anak
                 onClick={() => setSelectedPoll(pollAddr)} 
             />
           ))
+      )}
+
+      {/* Jika di tab My History kosong */}
+      {filterMode === "mine" && (
+          <p className="text-center text-[10px] text-gray-300 mt-4">Showing polls you voted on.</p>
       )}
 
       {/* MODAL VOTERS */}
