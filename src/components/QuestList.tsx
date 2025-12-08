@@ -1,94 +1,49 @@
 "use client";
 
-import { useState } from "react";
 import { useReadContract } from "wagmi";
 import { FACTORY_ABI, FACTORY_ADDRESS } from "~/app/constants";
-import SwipeCard from "./SwipeCard";
 import QuestCard from "./QuestCard";
-import { MdClose } from "react-icons/md";
+import { MdRefresh } from "react-icons/md"; // Import Icon Refresh
 
 export default function QuestList() {
-  const { data: allPolls, isLoading } = useReadContract({
+  const { data: allPolls, isLoading, refetch, isRefetching } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "getAllPolls",
   });
 
-  // State untuk melacak kartu mana yang sedang dilihat
-  const [currentIndex, setCurrentIndex] = useState(0);
-  // State jika user swipe kanan -> Buka mode voting
-  const [votingAddress, setVotingAddress] = useState<string | null>(null);
+  if (isLoading) return (
+    <div className="flex flex-col items-center justify-center py-20 space-y-3">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <p className="text-xs text-gray-400 animate-pulse">Fetching blocks...</p>
+    </div>
+  );
 
-  if (isLoading) return <p className="text-center mt-20 animate-pulse">Loading Stack...</p>;
-  if (!allPolls || allPolls.length === 0) return <p className="text-center mt-20 text-gray-400">No polls yet.</p>;
-
-  // Ambil daftar poll yang belum diswipe
-  // Kita reverse biar yang terbaru muncul duluan
-  const polls = [...allPolls].reverse(); 
-  
-  // Jika sudah habis swipe semua
-  if (currentIndex >= polls.length) {
-    return (
-      <div className="text-center mt-20">
-        <h3 className="text-xl font-bold mb-2">Touch grass</h3>
-        <button 
-          onClick={() => setCurrentIndex(0)} 
-          className="text-blue-600 font-bold underline"
-        >
-          Start Over
-        </button>
-      </div>
-    );
-  }
-
-  // === JIKA LAGI MODE VOTING (SWIPE KANAN) ===
-  if (votingAddress) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
-        <div className="bg-white rounded-2xl w-full max-w-md p-2 relative">
-          <button 
-            onClick={() => setVotingAddress(null)} // Tutup mode vote
-            className="absolute top-[-40px] right-0 bg-white/20 p-2 rounded-full text-white hover:bg-white/40"
-          >
-            <MdClose className="text-2xl" />
-          </button>
-          
-          {/* Tampilkan QuestCard Full (Vote Yes/No) */}
-          <QuestCard address={votingAddress} />
-        </div>
-      </div>
-    );
-  }
-
-  // === TAMPILAN TUMPUKAN KARTU (TINDER) ===
-  const handleSwipe = (direction: "left" | "right") => {
-    if (direction === "right") {
-      // Buka mode voting untuk kartu saat ini
-      setVotingAddress(polls[currentIndex]);
-    }
-    // Lanjut ke kartu berikutnya (baik skip maupun vote)
-    setTimeout(() => {
-        setCurrentIndex((prev) => prev + 1);
-    }, 200);
-  };
+  const polls = (allPolls as string[] || []).slice().reverse();
 
   return (
-    <div className="relative w-full h-[400px] flex justify-center items-center mt-4">
-      {/* Render 2 Kartu Saja: Yang aktif & 1 di belakangnya (biar hemat performa) */}
-      {polls.slice(currentIndex, currentIndex + 2).reverse().map((pollAddress, i) => {
-        // Logika index: kalau i=1 berarti kartu paling atas (karena direverse slice-nya)
-        // Kita butuh index relatif terhadap tumpukan visual
-        const isTopCard = i === 1 || (polls.slice(currentIndex, currentIndex + 2).length === 1);
-        
-        return (
-            <SwipeCard 
-                key={pollAddress} 
-                address={pollAddress} 
-                index={isTopCard ? 0 : 1}
-                onSwipe={handleSwipe}
-            />
-        );
-      })}
+    <div className="pb-20">
+      {/* TOMBOL REFRESH MANUAL (SOLUSI JIKA BLOCKCHAIN LAMBAT) */}
+      <div className="flex justify-end mb-2">
+        <button 
+            onClick={() => refetch()} 
+            className="flex items-center gap-1 text-xs font-bold text-gray-400 hover:text-blue-600 transition-colors"
+        >
+            <MdRefresh className={`text-sm ${isRefetching ? "animate-spin" : ""}`} />
+            {isRefetching ? "Updating..." : "Refresh Feed"}
+        </button>
+      </div>
+
+      {polls.length === 0 ? (
+        <div className="text-center py-10 bg-gray-50 dark:bg-gray-900 rounded-xl border border-dashed border-gray-200 dark:border-gray-800">
+            <p className="text-gray-400 text-sm">No polls found.</p>
+            <p className="text-gray-300 text-xs mt-1">Be the first to create one!</p>
+        </div>
+      ) : (
+        polls.map((pollAddress) => (
+          <QuestCard key={pollAddress} address={pollAddress} />
+        ))
+      )}
     </div>
   );
 }
