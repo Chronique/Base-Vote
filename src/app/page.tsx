@@ -68,10 +68,10 @@ export default function Home() {
   // === FUNGSI SHARE APP ===
   const handleShare = () => {
     // 1. URL Aplikasi Kamu
-    const appUrl = "https://base-vote-app.vercel.app"; 
+    const appUrl = "https://base-vote-alpha.vercel.app"; 
     
     // 2. Teks Promosi (Gunakan \n untuk baris baru)
-    const text = "Voting on Base is seamless, fun, and fully on-chain! 🔵\n\nCreate your poll or vote now 👇";
+    const text = "Voting on Base, create polls and vote 🔵\n\nCreate your poll or vote now 👇";
     
     // 3. Encode URL agar aman masuk ke link
     const encodedText = encodeURIComponent(text);
