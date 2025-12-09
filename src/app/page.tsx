@@ -5,25 +5,27 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import CreateQuest from "~/components/CreateQuest";
 import QuestList from "~/components/QuestList";
 import MyActivity from "~/components/MyActivity"; 
-import { METADATA } from "~/lib/utils";
 import { sdk } from "@farcaster/miniapp-sdk"; 
 import { useConnect, useAccount } from "wagmi"; 
-import { MdHomeFilled, MdAddCircle, MdPerson, MdHowToVote, MdBallot } from "react-icons/md";
+// Tambah Icon Share (MdShare)
+import { MdHomeFilled, MdAddCircle, MdPerson, MdHowToVote, MdBallot, MdAddToHomeScreen, MdShare } from "react-icons/md";
 
 export default function Home() {
-  // KEMBALIKAN DEFAULT KE FEED
   const [activeTab, setActiveTab] = useState<"feed" | "create" | "profile">("feed");
-  
-  // KEMBALIKAN KE NULL (KOSONG)
   const [farcasterUser, setFarcasterUser] = useState<{ pfpUrl?: string; username?: string } | null>(null);
+  const [isAdded, setIsAdded] = useState(false);
 
   const { connect, connectors } = useConnect();
   const { isConnected } = useAccount();
 
   const initializeFarcaster = useCallback(async () => {
     try {
-      // 1. AKTIFKAN LAGI LOGIKA INI (HAPUS KOMENTAR)
       const context = await sdk.context;
+      
+      if (context?.client?.added) {
+        setIsAdded(true);
+      }
+
       if (context?.user) {
         setFarcasterUser({
           pfpUrl: context.user.pfpUrl,
@@ -48,6 +50,35 @@ export default function Home() {
     initializeFarcaster();
   }, [initializeFarcaster]);
 
+  const handleAddApp = async () => {
+    try {
+      const result = await sdk.actions.addFrame();
+      if (result.added) {
+        setIsAdded(true);
+        alert("App added successfully! 🎉");
+      }
+    } catch (error) {
+      console.error("Failed to add frame:", error);
+    }
+  };
+
+  // === FUNGSI SHARE APP ===
+  const handleShare = () => {
+    // 1. URL Aplikasi Kamu
+    const appUrl = "https://base-vote-app.vercel.app"; 
+    
+    // 2. Teks Promosi (Gunakan \n untuk baris baru)
+    const text = "Voting on Base is seamless, fun, and fully on-chain! 🔵\n\nCreate your poll or vote now 👇";
+    
+    // 3. Encode URL agar aman masuk ke link
+    const encodedText = encodeURIComponent(text);
+    const encodedEmbed = encodeURIComponent(appUrl);
+
+    // 4. Buka Deep Link Warpcast (Compose Cast)
+    // Ini akan membuka pop-up create cast dengan teks yang sudah terisi
+    sdk.actions.openUrl(`https://warpcast.com/~/compose?text=${encodedText}&embeds[]=${encodedEmbed}`);
+  };
+
   return (
     <main className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans flex flex-col pb-24 transition-colors duration-300">
       
@@ -68,8 +99,29 @@ export default function Home() {
             </div>
         </div>
 
-        {/* PROFIL USER ASLI */}
-        <div>
+        <div className="flex items-center gap-2">
+          
+          {/* === TOMBOL SHARE (BARU) === */}
+          <button 
+              onClick={handleShare}
+              className="p-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors"
+              title="Share App"
+          >
+              <MdShare className="text-xl" />
+          </button>
+
+          {/* TOMBOL ADD TO HOME */}
+          {!isAdded && (
+            <button 
+                onClick={handleAddApp}
+                className="p-2 bg-gray-100 dark:bg-gray-800 text-blue-600 rounded-full hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors"
+                title="Add to Home"
+            >
+                <MdAddToHomeScreen className="text-xl" />
+            </button>
+          )}
+
+          {/* PROFIL USER */}
           {farcasterUser ? (
             <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 pr-4 pl-1 py-1 rounded-full border border-gray-200 dark:border-gray-700">
                {farcasterUser.pfpUrl ? (
@@ -85,7 +137,6 @@ export default function Home() {
                </span>
             </div>
           ) : (
-            // TOMBOL FALLBACK (Kalau dibuka di browser biasa)
             <ConnectButton showBalance={false} accountStatus="avatar" chainStatus="none" />
           )}
         </div>
