@@ -50,14 +50,17 @@ export default function Home() {
     initializeFarcaster();
   }, [initializeFarcaster]);
 
+  // === FUNGSI MEMUNCULKAN POP-UP "ADD APP" (FIXED) ===
   const handleAddApp = async () => {
     try {
-      const result = await sdk.actions.addFrame();
-      if (result.added) {
-        setIsAdded(true);
-        alert("App added successfully! 🎉");
-      }
+      // Kita tidak perlu mengecek result.added karena jika gagal dia akan throw error
+      await sdk.actions.addFrame();
+      
+      // Jika baris di atas sukses (tidak error), berarti user sudah add
+      setIsAdded(true);
+      alert("App added successfully! 🎉");
     } catch (error) {
+      // Jika user menolak/cancel, dia akan masuk ke sini
       console.error("Failed to add frame:", error);
     }
   };
