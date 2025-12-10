@@ -1,9 +1,9 @@
 "use client";
 
-import { useReadContract, useWriteContract } from "wagmi"; // Tambah useWriteContract
+import { useReadContract, useWriteContract, useAccount } from "wagmi"; // Tambah useAccount
 import { POLL_ABI } from "~/app/constants";
 import { motion, useMotionValue, useTransform } from "framer-motion";
-import { MdHowToVote, MdArrowBack, MdArrowForward } from "react-icons/md";
+import { MdHowToVote, MdArrowBack, MdArrowForward, MdCheckCircle } from "react-icons/md"; // Tambah Icon Check
 import { useTheme } from "next-themes"; 
 
 interface Props {
@@ -15,13 +15,25 @@ interface Props {
 export default function SwipeCard({ address, onSwipe, index }: Props) {
   const { resolvedTheme } = useTheme();
   
-  // 1. SIAPKAN FUNGSI WRITE CONTRACT
+  // 1. AMBIL ADDRESS USER (Untuk cek apakah dia sudah vote)
+  const { address: userAddress } = useAccount();
+
+  // 2. WRITE CONTRACT (Wallet)
   const { writeContract } = useWriteContract();
 
+  // 3. READ POLL DATA
   const { data: pollData } = useReadContract({
     address: address as `0x${string}`,
     abi: POLL_ABI,
     functionName: "getPollInfo",
+  });
+
+  // 4. CEK STATUS: APAKAH SUDAH VOTE?
+  const { data: hasVoted } = useReadContract({
+    address: address as `0x${string}`,
+    abi: POLL_ABI,
+    functionName: "hasVoted",
+    args: userAddress ? [userAddress] : undefined,
   });
 
   const x = useMotionValue(0);
@@ -47,30 +59,39 @@ export default function SwipeCard({ address, onSwipe, index }: Props) {
       drag={index === 0 ? "x" : false}
       dragConstraints={{ left: 0, right: 0 }}
       onDragEnd={(e, info) => {
-        // === LOGIKA SWIPE DIGANTI DISINI ===
         
-        // 1. SWIPE KANAN (VOTE OPTION 1)
+        // === SWIPE KANAN (VOTE YES) ===
         if (info.offset.x > 100) {
-            // Panggil Wallet untuk Vote Option 1
-            writeContract({
-                address: address as `0x${string}`,
-                abi: POLL_ABI,
-                functionName: "vote",
-                args: [1], // Vote Opsi 1 (Yes/First)
-            });
-            // Lanjut animasi kartu berikutnya
-            onSwipe("right");
+            
+            // CEK DULU: SUDAH VOTE ATAU BELUM?
+            if (hasVoted) {
+                // JIKA SUDAH: Tampilkan Alert/Notif saja, JANGAN panggil wallet
+                alert("⚠️ You already voted on this poll! Skipping transaction.");
+                
+                // Tetap lanjut ke kartu berikutnya (UX biar gak macet)
+                onSwipe("right");
+            } else {
+                // JIKA BELUM: Baru panggil Wallet
+                writeContract({
+                    address: address as `0x${string}`,
+                    abi: POLL_ABI,
+                    functionName: "vote",
+                    args: [1], 
+                });
+                onSwipe("right");
+            }
+
         } 
-        // 2. SWIPE KIRI (SKIP)
+        // === SWIPE KIRI (SKIP) ===
         else if (info.offset.x < -100) {
-            // Cuma skip, tidak panggil contract
             onSwipe("left");
         }
       }}
       className={`absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center p-6 cursor-grab active:cursor-grabbing text-center z-${10 - index}`}
     >
-      <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-full text-blue-500">
-        <MdHowToVote className="text-4xl" />
+      <div className={`mb-4 p-4 rounded-full ${hasVoted ? 'bg-green-100 text-green-600' : 'bg-gray-50 dark:bg-gray-800 text-blue-500'}`}>
+        {/* Ganti Icon kalau sudah vote */}
+        {hasVoted ? <MdCheckCircle className="text-4xl" /> : <MdHowToVote className="text-4xl" />}
       </div>
 
       <h3 className="text-2xl font-black text-gray-800 dark:text-white mb-2 leading-tight">
@@ -78,7 +99,7 @@ export default function SwipeCard({ address, onSwipe, index }: Props) {
       </h3>
 
       <p className="text-gray-500 dark:text-gray-400 font-medium text-sm mt-2">
-        {total} people voted
+        {total} people voted {hasVoted && <span className="text-green-500 font-bold ml-1">(You Voted)</span>}
       </p>
 
       <div className="absolute bottom-6 flex justify-between w-full px-8">
@@ -89,8 +110,8 @@ export default function SwipeCard({ address, onSwipe, index }: Props) {
         </div>
 
         {/* Indikator Kanan */}
-        <div className="flex items-center gap-1 text-blue-500/80 dark:text-blue-400/80 font-black text-xs tracking-widest">
-            VOTE (YES) <MdArrowForward />
+        <div className={`flex items-center gap-1 font-black text-xs tracking-widest ${hasVoted ? 'text-gray-400' : 'text-blue-500/80 dark:text-blue-400/80'}`}>
+            {hasVoted ? "ALREADY VOTED" : "VOTE (YES)"} <MdArrowForward />
         </div>
 
       </div>
