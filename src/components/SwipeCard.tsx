@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useReadContract, useWriteContract, useAccount } from "wagmi";
 import { POLL_ABI } from "~/app/constants";
-// 1. IMPORT 'animate' DARI FRAMER-MOTION
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { MdHowToVote, MdArrowBack, MdArrowForward, MdCheckCircle, MdThumbUp, MdTouchApp } from "react-icons/md";
 import { useTheme } from "next-themes"; 
@@ -54,11 +53,10 @@ export default function SwipeCard({ address, onSwipe, index }: Props) {
   const y = index === 0 ? 0 : 10;
   const userHasVoted = Boolean(hasVoted);
 
-  // === STEP 3: EKSEKUSI TRANSAKSI + ANIMASI KELUAR ===
+  // === STEP 3: EKSEKUSI TRANSAKSI + ANIMASI KELUAR (KANAN) ===
   const handleFinalVote = async () => {
     if (!confirmChoice) return;
 
-    // 1. Panggil Wallet
     writeContract({
         address: address as `0x${string}`,
         abi: POLL_ABI,
@@ -66,14 +64,10 @@ export default function SwipeCard({ address, onSwipe, index }: Props) {
         args: [confirmChoice], 
     });
 
-    // 2. ANIMASI KARTU TERBANG KELUAR (FIX BUG CARD NYANGKUT)
-    // Kita paksa nilai X bergerak ke 500 (kanan jauh) dalam 0.2 detik
+    // Animasi Terbang ke Kanan
     await animate(x, 500, { duration: 0.2 });
-
-    // 3. Beritahu parent component bahwa kartu sudah diswipe
     onSwipe("right");
     
-    // 4. Reset state lokal (sebagai pembersih, walau komponen akan unmount)
     setConfirmChoice(null);
     setShowSelection(false);
   };
@@ -85,23 +79,28 @@ export default function SwipeCard({ address, onSwipe, index }: Props) {
       style={{ x, rotate, opacity, scale, y, backgroundColor: activeBg }}
       drag={index === 0 && !showSelection && !confirmChoice ? "x" : false} 
       dragConstraints={{ left: 0, right: 0 }}
-      onDragEnd={(e, info) => {
-        // SWIPE KANAN
+      onDragEnd={async (e, info) => {
+        // === SWIPE KANAN ===
         if (info.offset.x > 100) {
             if (isLoadingVote) return;
 
             if (userHasVoted) {
                 alert("⚠️ You already voted!");
-                // Kalau sudah vote, kita animasikan juga biar mulus
-                animate(x, 500, { duration: 0.2 }).then(() => onSwipe("right"));
+                // Animasi Terbang ke Kanan (Jika sudah vote)
+                await animate(x, 500, { duration: 0.2 });
+                onSwipe("right");
             } else {
-                // Kembalikan kartu ke tengah untuk baca menu
+                // Kembalikan ke tengah untuk menu pilihan
                 animate(x, 0, { duration: 0.2 });
                 setShowSelection(true);
             }
         } 
-        // SWIPE KIRI
+        // === SWIPE KIRI (FIX DISINI) ===
         else if (info.offset.x < -100) {
+            // 1. Paksa Animasi Terbang ke Kiri (-500)
+            await animate(x, -500, { duration: 0.2 });
+            
+            // 2. Baru panggil fungsi onSwipe
             onSwipe("left");
         }
       }}
