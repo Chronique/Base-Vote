@@ -5,12 +5,10 @@ import { useReadContract } from "wagmi";
 import { FACTORY_ABI, FACTORY_ADDRESS } from "~/app/constants";
 import { AnimatePresence } from "framer-motion";
 import SwipeCard from "./SwipeCard";
-import { MdRefresh } from "react-icons/md";
-// 1. IMPORT CYCLE MEME
 import CycleMeme from "./CycleMeme"; 
 
 export default function QuestList() {
-  const { data: allPolls, isLoading, refetch, isRefetching } = useReadContract({
+  const { data: allPolls, isLoading, refetch } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "getAllPolls",
@@ -18,6 +16,7 @@ export default function QuestList() {
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  // TAMPILAN LOADING
   if (isLoading) return (
     <div className="flex flex-col items-center justify-center py-40 space-y-3">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -33,12 +32,10 @@ export default function QuestList() {
     }, 200); 
   };
 
-  // === BAGIAN INI YANG DIGANTI ===
+  // JIKA KARTU HABIS (Cycle Meme)
   if (currentIndex >= polls.length) {
     return (
       <div className="flex flex-col items-center justify-center h-[65vh] w-full px-6">
-        {/* Panggil Component CycleMeme disini */}
-        {/* Kita oper fungsi refetch dan reset index ke dalamnya */}
         <CycleMeme 
             onRefresh={() => { 
                 refetch(); 
@@ -52,15 +49,9 @@ export default function QuestList() {
   return (
     <div className="relative h-[65vh] w-full flex justify-center items-center mt-4">
       
-      <div className="absolute -top-10 right-0 z-50">
-        <button 
-            onClick={() => refetch()} 
-            className="flex items-center gap-1 text-xs font-bold text-gray-400 hover:text-blue-600 transition-colors"
-        >
-            <MdRefresh className={`text-sm ${isRefetching ? "animate-spin" : ""}`} />
-            {isRefetching ? "Updating..." : "Refresh"}
-        </button>
-      </div>
+      {/* TOMBOL REFRESH DIHAPUS (Sesuai Request)
+         User bisa gunakan fitur refresh bawaan Farcaster Client
+      */}
 
       <AnimatePresence>
         {polls.slice(currentIndex, currentIndex + 2).map((pollAddress, i) => {
