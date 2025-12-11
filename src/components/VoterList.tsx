@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useReadContract, useEnsName } from "wagmi";
+import { useEnsName } from "wagmi";
 import { POLL_ABI } from "~/app/constants";
 import { MdPerson } from "react-icons/md";
 // Import Public Client untuk baca Event Logs
@@ -19,6 +19,7 @@ interface VoterData {
 const VoterRow = ({ voter, choice, opt1, opt2 }: { voter: string, choice: number, opt1: string, opt2: string }) => {
   
   // Resolve Base Name / ENS
+  // ChainId 8453 adalah Base Mainnet
   const { data: ensName } = useEnsName({ 
     address: voter as `0x${string}`, 
     chainId: 8453 
@@ -31,90 +32,91 @@ const VoterRow = ({ voter, choice, opt1, opt2 }: { voter: string, choice: number
   return (
     <div className="flex justify-between items-center p-3 border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 overflow-hidden">
-           <MdPerson />
+        <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300">
+            <MdPerson />
         </div>
-        
-        <div className="flex flex-col">
-            <span className="font-bold text-sm text-gray-800 dark:text-gray-200">
-                {displayName}
-            </span>
-            {ensName && (
-                <span className="text-[10px] text-gray-400 font-mono">{voter.slice(0,6)}...</span>
-            )}
-        </div>
+        <span className="font-medium text-gray-800 dark:text-gray-200">{displayName}</span>
       </div>
-      
-      <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide ${choiceColor}`}>
-        {choiceText}
-      </span>
+      <span className={`text-xs font-bold px-3 py-1 rounded-full ${choiceColor}`}>{choiceText}</span>
     </div>
   );
 };
 
-export default function VoterList({ pollAddress }: { pollAddress: string }) {
+// --- Komponen Utama VoterList ---
+interface Props {
+  address: string;
+  opt1: string; // <-- TERIMA PROPS OPSI
+  opt2: string; // <-- TERIMA PROPS OPSI
+}
+
+export default function VoterList({ address, opt1, opt2 }: Props) { // <-- TERIMA PROPS
   const publicClient = usePublicClient();
   const [voters, setVoters] = useState<VoterData[]>([]);
-  const [loadingVoters, setLoadingVoters] = useState(true);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(true);
 
-  // Ambil Data Detail Poll (Judul Opsi)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: pollData } = useReadContract({
-    address: pollAddress as `0x${string}`,
-    abi: POLL_ABI,
-    functionName: "getPollInfo",
-  });
+  // 1. Definisikan ABI untuk Event VoteCast
+  const voteCastEvent = parseAbiItem("event VoteCast(address indexed voter, uint256 choice, uint256 timestamp)");
 
-  // LOGIKA BARU: Fetch Event Logs Manual
   useEffect(() => {
-    const fetchLogs = async () => {
-      if (!publicClient || !pollAddress) return;
+    async function fetchVoters() {
+      if (!publicClient) return;
+      setIsLoadingLogs(true);
       
       try {
-        setLoadingVoters(true);
-        // Kita cari event 'NewVote' dari alamat poll ini
-        // Mengambil log dari blok awal (0n) sampai sekarang
+        // 2. Baca log Event VoteCast dari address Poll ini
         const logs = await publicClient.getLogs({
-          address: pollAddress as `0x${string}`,
-          event: parseAbiItem('event NewVote(address indexed voter, uint8 choice, uint256 timestamp)'),
-          fromBlock: 'earliest' 
+          address: address as `0x${string}`,
+          event: voteCastEvent,
+          fromBlock: 0n, // Cari dari awal (block 0)
         });
 
-        // Format data log menjadi array voter yang bersih
+        // 3. Format hasil log menjadi array VoterData
         const formattedVoters: VoterData[] = logs.map(log => ({
           voter: log.args.voter as string,
           choice: Number(log.args.choice),
-          timestamp: log.args.timestamp as bigint
-        }));
+          timestamp: log.args.timestamp as bigint,
+        })).sort((a, b) => Number(b.timestamp) - Number(a.timestamp)); // Urutkan terbaru dulu
 
         setVoters(formattedVoters);
-      } catch (error) {
-        console.error("Error fetching vote logs:", error);
+      } catch (e) {
+        console.error("Error fetching vote logs:", e);
+        setVoters([]); 
       } finally {
-        setLoadingVoters(false);
+        setIsLoadingLogs(false);
       }
-    };
+    }
 
-    fetchLogs();
-  }, [publicClient, pollAddress]);
-
-  if (loadingVoters) return <div className="p-8 flex justify-center"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div></div>;
+    fetchVoters();
+  }, [publicClient, address]); 
   
-  if (voters.length === 0) return <p className="text-center p-8 text-sm text-gray-400">No voters yet. Be the first!</p>;
-  if (!pollData) return null;
+  // Tampilkan loading state
+  if (isLoadingLogs) {
+    return (
+        <div className="text-center p-6 text-gray-500 dark:text-gray-400">
+            Fetching voter data from blockchain...
+        </div>
+    );
+  }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [ , opt1, , opt2, ] = pollData as any;
-
+  // Tampilkan pesan jika tidak ada voter
+  if (voters.length === 0) {
+    return (
+        <div className="text-center p-6 text-gray-500 dark:text-gray-400">
+            No one has voted yet. Be the first!
+        </div>
+    );
+  }
+  
+  // Render daftar voter
   return (
-    <div className="max-h-[60vh] overflow-y-auto scrollbar-hide">
-      {[...voters].reverse().map((v, i) => (
+    <div className="divide-y divide-gray-100 dark:divide-gray-800">
+      {voters.map((v, index) => (
         <VoterRow 
-            key={i} 
-            voter={v.voter} 
-            choice={Number(v.choice)} 
-            opt1={opt1} 
-            opt2={opt2} 
+          key={index} 
+          voter={v.voter} 
+          choice={v.choice} 
+          opt1={opt1} // <-- PASSING OPSI KE VOTER ROW
+          opt2={opt2} // <-- PASSING OPSI KE VOTER ROW
         />
       ))}
     </div>

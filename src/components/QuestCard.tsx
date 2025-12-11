@@ -4,6 +4,8 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { POLL_ABI } from "~/app/constants";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import VoterList from "./VoterList"; // <-- IMPORT KOMPONEN VOTER LIST
+import { MdCheckCircle, MdFormatListBulleted, MdClose } from "react-icons/md"; // <-- ICON BARU
 
 interface Props {
   address: string;
@@ -12,6 +14,7 @@ interface Props {
 export default function QuestCard({ address }: Props) {
   const { address: userAddress } = useAccount();
   const [isVoting, setIsVoting] = useState(false);
+  const [showVoters, setShowVoters] = useState(false); // <-- STATE BARU: VISIBILITAS VOTER LIST
 
   // 1. READ POLL DATA
   const { data: pollData } = useReadContract({
@@ -20,14 +23,14 @@ export default function QuestCard({ address }: Props) {
     functionName: "getPollInfo",
   });
 
-  // 2. READ VOTER STATUS (Fix: functionName harus 'hasVoted')
+  // 2. READ VOTER STATUS
   const { data: hasVotedData } = useReadContract({
     address: address as `0x${string}`,
     abi: POLL_ABI,
-    functionName: "hasVoted", // <-- NAMA FUNGSI DIPERBAIKI (Sesuai Solidity)
+    functionName: "hasVoted", 
     args: userAddress ? [userAddress] : undefined,
     query: {
-      enabled: !!userAddress, // Hanya jalan kalau user sudah connect wallet
+      enabled: !!userAddress, 
     },
   });
 
@@ -49,12 +52,12 @@ export default function QuestCard({ address }: Props) {
     });
   };
 
-  // Konversi hasVotedData ke Boolean murni untuk prop 'disabled'
+  // Konversi hasVotedData ke Boolean murni
   const hasVoted = Boolean(hasVotedData); 
 
   if (!pollData) return null;
 
-  // Destructure dan Konversi BigInt ke Number (Fix Error Matematika)
+  // Destructure dan Konversi BigInt ke Number
   const [question, opt1, count1Big, opt2, count2Big, endTime] = pollData as [string, string, bigint, string, bigint, bigint];
   
   const count1 = Number(count1Big);
@@ -65,6 +68,42 @@ export default function QuestCard({ address }: Props) {
   const pct1 = totalVotes === 0 ? 0 : Math.round((count1 / totalVotes) * 100);
   const pct2 = totalVotes === 0 ? 0 : Math.round((count2 / totalVotes) * 100);
 
+  // === RENDER VOTER LIST MODAL (Jika showVoters true) ===
+  if (showVoters) {
+    return (
+        <div 
+            className="fixed inset-0 bg-black/50 dark:bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in" 
+            onClick={() => setShowVoters(false)}
+        >
+            <div 
+                className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-md h-full max-h-[80vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200" 
+                onClick={(e) => e.stopPropagation()} // Mencegah klik di dalam modal menutup modal
+            >
+                <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 p-5 rounded-t-3xl z-10 flex justify-between items-center">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate">Voters for: {question}</h3>
+                    <button 
+                        onClick={() => setShowVoters(false)} 
+                        className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-full transition-colors"
+                        aria-label="Close"
+                    >
+                        <MdClose className="text-2xl" />
+                    </button>
+                </div>
+                
+                {/* Komponen VoterList - Dipanggil di sini */}
+                <div className="p-5">
+                    <VoterList 
+                        address={address} 
+                        opt1={opt1} 
+                        opt2={opt2} 
+                    />
+                </div>
+            </div>
+        </div>
+    );
+  }
+
+  // === RENDER QUEST CARD UTAMA ===
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-5 rounded-2xl shadow-sm mb-4">
       <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">{question}</h3>
@@ -74,8 +113,8 @@ export default function QuestCard({ address }: Props) {
         <div className="relative">
           <button
             onClick={() => handleVote(1)}
-            disabled={hasVoted || isPending || isVoting} // Fix: Value harus boolean
-            aria-label={`Vote for ${opt1}`} // Fix: Accessibility
+            disabled={hasVoted || isPending || isVoting} 
+            aria-label={`Vote for ${opt1}`} 
             className="w-full relative z-10 flex justify-between items-center p-3 rounded-xl border border-blue-100 dark:border-blue-900/30 hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-left"
           >
             <span className="font-semibold text-blue-700 dark:text-blue-300">{opt1}</span>
@@ -96,8 +135,8 @@ export default function QuestCard({ address }: Props) {
         <div className="relative">
           <button
             onClick={() => handleVote(2)}
-            disabled={hasVoted || isPending || isVoting} // Fix: Value harus boolean
-            aria-label={`Vote for ${opt2}`} // Fix: Accessibility
+            disabled={hasVoted || isPending || isVoting} 
+            aria-label={`Vote for ${opt2}`} 
             className="w-full relative z-10 flex justify-between items-center p-3 rounded-xl border border-pink-100 dark:border-pink-900/30 hover:bg-pink-50 dark:hover:bg-pink-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-left"
           >
             <span className="font-semibold text-pink-700 dark:text-pink-300">{opt2}</span>
@@ -117,7 +156,22 @@ export default function QuestCard({ address }: Props) {
 
       <div className="mt-4 flex justify-between items-center text-xs text-gray-400">
         <span>Total Votes: {totalVotes}</span>
-        <span>{hasVoted ? "You voted ✅" : "Tap to vote"}</span>
+        
+        <div className="flex items-center gap-3">
+          {/* TOMBOL SEE VOTERS BARU */}
+          {totalVotes > 0 && (
+              <button 
+                  onClick={() => setShowVoters(true)} 
+                  className="flex items-center gap-1 text-blue-500 hover:text-blue-600 font-bold transition-colors"
+              >
+                  <MdFormatListBulleted className="text-base" />
+                  <span>See Voters</span>
+              </button>
+          )}
+
+          {/* Status Vote User */}
+          <span>{hasVoted ? "You voted ✅" : "Tap to vote"}</span>
+        </div>
       </div>
     </div>
   );
