@@ -78,26 +78,31 @@ export default function SwipeCard({ address, onSwipe, index }: Props) {
     <motion.div
       style={{ x, rotate, opacity, scale, y, backgroundColor: activeBg }}
       drag={index === 0 && !showSelection && !confirmChoice ? "x" : false} 
-      dragConstraints={{ left: 0, right: 0 }}
-      onDragEnd={async (e, info) => {
-        // === SWIPE KANAN ===
-        if (info.offset.x > 100) {
-            if (isLoadingVote) return;
+      
+      // === KUNCI ARAH SWIPE ===
+      // Kalau sudah vote: Kiri (-1000) boleh, Kanan (0) GABOLEH/Mentok Tengah
+      // Kalau belum vote: Bebas kiri kanan
+      dragConstraints={{ 
+        left: -1000, 
+        right: userHasVoted ? 0 : 1000 
+      }}
+      
+      // Efek mental kalau dipaksa tarik ke kanan pas udah vote
+      dragElastic={userHasVoted ? { right: 0 } : 0.5}
 
-            if (userHasVoted) {
-                alert("⚠️ You already voted!");
-                // Animasi Terbang ke Kanan (Jika sudah vote)
-                await animate(x, 500, { duration: 0.2 });
-                onSwipe("right");
-            } else {
-                // Kembalikan ke tengah untuk menu pilihan
-                animate(x, 0, { duration: 0.2 });
-                setShowSelection(true);
-            }
+      onDragEnd={async (e, info) => {
+        // === SWIPE KANAN (Hanya bisa terjadi kalau belum vote) ===
+        if (info.offset.x > 100 && !userHasVoted) {
+            if (isLoadingVote) return;
+            
+            // Kembalikan ke tengah untuk menu pilihan
+            animate(x, 0, { duration: 0.2 });
+            setShowSelection(true);
         } 
-        // === SWIPE KIRI (FIX DISINI) ===
+        // === SWIPE KIRI (SKIP) ===
         else if (info.offset.x < -100) {
             // 1. Paksa Animasi Terbang ke Kiri (-500)
+            // Ini PENTING biar kartu terakhir gak stuck
             await animate(x, -500, { duration: 0.2 });
             
             // 2. Baru panggil fungsi onSwipe
@@ -183,13 +188,20 @@ export default function SwipeCard({ address, onSwipe, index }: Props) {
         {total} people voted {userHasVoted && <span className="text-green-500 font-bold ml-1">(You Voted)</span>}
       </p>
 
-      {/* INDIKATOR SWIPE */}
+      {/* INDIKATOR SWIPE (Visual Hint) */}
       <div className="absolute bottom-6 flex justify-between w-full px-8">
         <div className="flex items-center gap-1 text-red-400/80 dark:text-red-500/80 font-black text-xs tracking-widest">
-            <MdArrowBack /> NO (SKIP)
+            {/* Teks Kiri selalu sama */}
+            <MdArrowBack /> SKIP
         </div>
-        <div className={`flex items-center gap-1 font-black text-xs tracking-widest ${userHasVoted ? 'text-gray-400' : 'text-blue-500/80 dark:text-blue-400/80'}`}>
-            {userHasVoted ? "ALREADY VOTED" : "YES (VOTE)"} <MdArrowForward />
+        
+        {/* Teks Kanan berubah tergantung status vote */}
+        <div className={`flex items-center gap-1 font-black text-xs tracking-widest ${userHasVoted ? 'text-gray-300 dark:text-gray-600' : 'text-blue-500/80 dark:text-blue-400/80'}`}>
+            {userHasVoted ? 
+                <span className="flex items-center gap-1">ALREADY VOTED <MdCheckCircle/></span> 
+                : 
+                <span className="flex items-center gap-1">VOTE <MdArrowForward /></span>
+            } 
         </div>
       </div>
 
