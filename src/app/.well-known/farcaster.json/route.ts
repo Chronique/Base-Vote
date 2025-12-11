@@ -23,7 +23,7 @@ export async function GET() {
       "buttonTitle": "Vote Now",
       "splashImageUrl": "https://base-vote-alpha.vercel.app/splash.png",
       
-      "splashBackgroundColor": "#0052FF",
+      "splashBackgroundColor": "#ffffff",
       "webhookUrl": "https://base-vote-alpha.vercel.app/api/webhook",
       
       "primaryCategory": "social",
