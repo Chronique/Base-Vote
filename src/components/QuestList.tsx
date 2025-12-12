@@ -7,59 +7,23 @@ import { AnimatePresence } from "framer-motion";
 import SwipeCard from "./SwipeCard";
 import CycleMeme from "./CycleMeme"; 
 
-// Limit the number of cards rendered per session to prevent UI freeze
-const BATCH_SIZE = 10; 
-
 export default function QuestList() {
-  // 1. Fetch ALL polls from the factory contract
-  const { data: allPollsData, isLoading, refetch } = useReadContract({
+  // Tambahkan staleTime juga di sini biar listnya gak reload melulu
+  const { data: allPolls, isLoading, refetch } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "getAllPolls",
+    query: { staleTime: 1000 * 60 * 5 }
   });
 
-  const [page, setPage] = useState(0);         // Current batch page (0, 1, 2...)
-  const [currentIndex, setCurrentIndex] = useState(0); // Card index within the current batch (0 to 9)
+  const [currentIndex, setCurrentIndex] = useState(0);
 
-  // 2. Process data: Reverse to show the newest polls first
-  const allPolls = useMemo(() => {
-    return (allPollsData as string[] || []).slice().reverse();
-  }, [allPollsData]);
+  // Memoize polls agar tidak direcompute setiap render
+  const polls = useMemo(() => {
+    return (allPolls as string[] || []).slice().reverse();
+  }, [allPolls]);
 
-  // 3. Slice data based on the current Page (Pagination Logic)
-  // Page 0: takes index 0-10
-  // Page 1: takes index 10-20
-  const currentBatch = useMemo(() => {
-    const start = page * BATCH_SIZE;
-    const end = start + BATCH_SIZE;
-    return allPolls.slice(start, end);
-  }, [allPolls, page]);
-
-  const handleSwipe = () => {
-    // Small delay before showing the next card for smoother animation
-    setTimeout(() => {
-        setCurrentIndex((prev) => prev + 1);
-    }, 200); 
-  };
-
-  // Logic when CycleMeme is completed (User clicked "LFG")
-  const handleCycleComplete = () => {
-    const nextStart = (page + 1) * BATCH_SIZE;
-    
-    // Check if there are more polls in the next batch
-    if (nextStart < allPolls.length) {
-        // Advance to the next page (load next 10 cards)
-        setPage((prev) => prev + 1);
-        setCurrentIndex(0); 
-    } else {
-        // No more data! Reset to the beginning & refetch to check for new polls
-        refetch();
-        setPage(0);
-        setCurrentIndex(0);
-    }
-  };
-
-  // LOADING STATE
+  // TAMPILAN LOADING
   if (isLoading) return (
     <div className="flex flex-col items-center justify-center py-40 space-y-3">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -67,26 +31,43 @@ export default function QuestList() {
     </div>
   );
 
-  // CONDITION 1: BATCH COMPLETED -> SHOW CYCLE MEME
-  // User must interact with the meme to unlock the next batch
-  if (currentIndex >= currentBatch.length) {
+  const handleSwipe = () => {
+    // Delay sedikit agar animasi "terbang" selesai sebelum state diupdate
+    setTimeout(() => {
+        setCurrentIndex((prev) => prev + 1);
+    }, 200); 
+  };
+
+  // JIKA KARTU HABIS (Cycle Meme)
+  if (currentIndex >= polls.length && polls.length > 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[65vh] w-full px-6">
-        <CycleMeme onRefresh={handleCycleComplete} />
-        
-        {/* User hint */}
-        <p className="text-[10px] text-gray-400 mt-8 animate-pulse">
-           {((page + 1) * BATCH_SIZE) >= allPolls.length ? "All polls viewed! Looping back..." : "Complete the cycle to load more..."}
-        </p>
+        <CycleMeme 
+            onRefresh={() => { 
+                refetch(); 
+                setCurrentIndex(0); 
+            }} 
+        />
       </div>
     );
   }
 
-  // CONDITION 2: RENDER CARDS (Only render the top 2 cards for performance)
+  // JIKA DATA KOSONG (Belum ada poll sama sekali)
+  if (polls.length === 0) {
+     return (
+        <div className="flex flex-col items-center justify-center h-[65vh] text-center px-6">
+            <p className="text-gray-500">No polls available yet.</p>
+            <button onClick={() => refetch()} className="text-blue-500 text-sm mt-2">Refresh</button>
+        </div>
+     );
+  }
+
   return (
     <div className="relative h-[65vh] w-full flex justify-center items-center mt-4">
       <AnimatePresence>
-        {currentBatch.slice(currentIndex, currentIndex + 2).map((pollAddress, i) => {
+        {/* Render hanya 2 kartu: Current dan Next. 
+            Kartu ketiga dst tidak perlu dirender agar ringan. */}
+        {polls.slice(currentIndex, currentIndex + 2).map((pollAddress, i) => {
             const isFront = i === 0; 
             return (
                 <SwipeCard 
@@ -98,11 +79,6 @@ export default function QuestList() {
             );
         }).reverse()} 
       </AnimatePresence>
-      
-      {/* Batch Progress Indicator */}
-      <div className="absolute top-0 right-4 text-[10px] font-bold text-gray-300 dark:text-gray-700">
-        {currentIndex + 1} / {currentBatch.length}
-      </div>
     </div>
   );
 }

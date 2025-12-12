@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import { useReadContract, useWriteContract, useAccount } from "wagmi";
 import { POLL_ABI } from "~/app/constants";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
@@ -13,7 +13,8 @@ interface Props {
   index: number;
 }
 
-export default function SwipeCard({ address, onSwipe, index }: Props) {
+// 1. Gunakan 'memo' agar kartu tidak render ulang jika props tidak berubah
+const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
   const { resolvedTheme } = useTheme();
   
   const [showSelection, setShowSelection] = useState(false);
@@ -22,10 +23,15 @@ export default function SwipeCard({ address, onSwipe, index }: Props) {
   const { address: userAddress } = useAccount();
   const { writeContract } = useWriteContract();
 
+  // 2. FETCH DATA DENGAN CACHING (staleTime)
+  // Ini mencegah request berulang saat animasi berjalan, penyebab utama LAG.
   const { data: pollData } = useReadContract({
     address: address as `0x${string}`,
     abi: POLL_ABI,
     functionName: "getPollInfo",
+    query: {
+        staleTime: 1000 * 60 * 5, // Cache data selama 5 menit
+    }
   });
 
   const { data: hasVoted, isLoading: isLoadingVote } = useReadContract({
@@ -33,7 +39,10 @@ export default function SwipeCard({ address, onSwipe, index }: Props) {
     abi: POLL_ABI,
     functionName: "hasVoted",
     args: userAddress ? [userAddress] : undefined,
-    query: { enabled: !!userAddress }
+    query: { 
+        enabled: !!userAddress,
+        staleTime: 1000 * 60 * 5, // Cache status vote user
+    }
   });
 
   const x = useMotionValue(0);
@@ -44,7 +53,17 @@ export default function SwipeCard({ address, onSwipe, index }: Props) {
   const bgDark = useTransform(x, [-200, 0, 200], ["#450a0a", "#1f2937", "#172554"]);
   const activeBg = resolvedTheme === "dark" ? bgDark : bgLight;
 
-  if (!pollData) return null;
+  // Render Skeleton jika data belum siap (Biar gak flicker)
+  if (!pollData) {
+     return (
+        <div className={`absolute w-full max-w-sm h-80 rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 flex items-center justify-center z-${10 - index} scale-${index === 0 ? '100' : '95'} shadow-xl`}>
+            <div className="animate-pulse flex flex-col items-center gap-4 w-full">
+                <div className="h-12 w-12 bg-gray-200 dark:bg-gray-800 rounded-full"></div>
+                <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-800 rounded"></div>
+            </div>
+        </div>
+     );
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [question, opt1, count1, opt2, count2] = pollData as any;
@@ -53,7 +72,6 @@ export default function SwipeCard({ address, onSwipe, index }: Props) {
   const y = index === 0 ? 0 : 10;
   const userHasVoted = Boolean(hasVoted);
 
-  // === STEP 3: EKSEKUSI TRANSAKSI + ANIMASI KELUAR (KANAN) ===
   const handleFinalVote = async () => {
     if (!confirmChoice) return;
 
@@ -64,10 +82,8 @@ export default function SwipeCard({ address, onSwipe, index }: Props) {
         args: [confirmChoice], 
     });
 
-    // Animasi Terbang ke Kanan
     await animate(x, 500, { duration: 0.2 });
     onSwipe("right");
-    
     setConfirmChoice(null);
     setShowSelection(false);
   };
@@ -78,38 +94,31 @@ export default function SwipeCard({ address, onSwipe, index }: Props) {
     <motion.div
       style={{ x, rotate, opacity, scale, y, backgroundColor: activeBg }}
       drag={index === 0 && !showSelection && !confirmChoice ? "x" : false} 
-      
-      // === KUNCI ARAH SWIPE ===
-      // Kalau sudah vote: Kiri (-1000) boleh, Kanan (0) GABOLEH/Mentok Tengah
-      // Kalau belum vote: Bebas kiri kanan
-      dragConstraints={{ 
-        left: -1000, 
-        right: userHasVoted ? 0 : 1000 
-      }}
-      
-      // Efek mental kalau dipaksa tarik ke kanan pas udah vote
+      dragConstraints={{ left: -1000, right: userHasVoted ? 0 : 1000 }}
       dragElastic={userHasVoted ? { right: 0 } : 0.5}
+      
+      // 3. OPTIMASI GPU (will-change-transform)
+      // Ini memberitahu browser untuk menyiapkan GPU, animasi jadi jauh lebih mulus
+      className={`absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center p-6 text-center z-${10 - index} overflow-hidden will-change-transform cursor-grab active:cursor-grabbing`}
 
       onDragEnd={async (e, info) => {
-        // === SWIPE KANAN (Hanya bisa terjadi kalau belum vote) ===
-        if (info.offset.x > 100 && !userHasVoted) {
+        const offset = info.offset.x;
+        const velocity = info.velocity.x;
+
+        // SWIPE KANAN (Vote)
+        if ((offset > 100 || velocity > 500) && !userHasVoted) {
             if (isLoadingVote) return;
-            
-            // Kembalikan ke tengah untuk menu pilihan
             animate(x, 0, { duration: 0.2 });
             setShowSelection(true);
         } 
-        // === SWIPE KIRI (SKIP) ===
-        else if (info.offset.x < -100) {
-            // 1. Paksa Animasi Terbang ke Kiri (-500)
-            // Ini PENTING biar kartu terakhir gak stuck
-            await animate(x, -500, { duration: 0.2 });
-            
-            // 2. Baru panggil fungsi onSwipe
+        // SWIPE KIRI (Skip)
+        else if (offset < -100 || velocity < -500) {
+            await animate(x, -500, { duration: 0.15 });
             onSwipe("left");
+        } else {
+            animate(x, 0, { duration: 0.2 });
         }
       }}
-      className={`absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center p-6 text-center z-${10 - index} overflow-hidden`}
     >
       
       {/* LAYER 1: MENU PILIH OPSI */}
@@ -118,64 +127,34 @@ export default function SwipeCard({ address, onSwipe, index }: Props) {
              <div className="mb-4 text-blue-600 dark:text-blue-400">
                 <MdTouchApp className="text-4xl" />
              </div>
-             <h3 className="text-gray-900 dark:text-white font-bold text-lg mb-4">Choose an Option</h3>
-             
+             <h3 className="text-gray-900 dark:text-white font-bold text-lg mb-4">Choose Option</h3>
              <div className="flex flex-col gap-3 w-full">
-                <button 
-                    onClick={() => setConfirmChoice(1)} 
-                    className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-bold rounded-xl hover:scale-[1.02] transition-transform"
-                >
+                <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-bold rounded-xl hover:scale-[1.02] transition-transform">
                     {opt1}
                 </button>
-
-                <button 
-                    onClick={() => setConfirmChoice(2)} 
-                    className="w-full py-4 bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800 text-pink-700 dark:text-pink-300 font-bold rounded-xl hover:scale-[1.02] transition-transform"
-                >
+                <button onClick={() => setConfirmChoice(2)} className="w-full py-4 bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800 text-pink-700 dark:text-pink-300 font-bold rounded-xl hover:scale-[1.02] transition-transform">
                     {opt2}
                 </button>
-
-                <button 
-                    onClick={() => { setShowSelection(false); x.set(0); }}
-                    className="mt-2 text-sm text-gray-400 underline"
-                >
-                    Cancel
-                </button>
+                <button onClick={() => { setShowSelection(false); x.set(0); }} className="mt-2 text-sm text-gray-400 underline">Cancel</button>
              </div>
         </div>
       )}
 
-      {/* LAYER 2: KONFIRMASI AKHIR */}
+      {/* LAYER 2: KONFIRMASI */}
       {confirmChoice && (
         <div className="absolute inset-0 z-50 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6 animate-in slide-in-from-right-10 duration-200">
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4 text-green-600 dark:text-green-400">
                 <MdThumbUp className="text-3xl" />
             </div>
-            
-            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-bold uppercase tracking-wider mb-1">You are voting for</h3>
-            <p className="text-xl font-black text-gray-900 dark:text-white mb-6 leading-tight px-4 border-l-4 border-blue-500">
-                "{selectedOptionName}"
-            </p>
-
+            <p className="text-xl font-black text-gray-900 dark:text-white mb-6 leading-tight px-4 border-l-4 border-blue-500">"{selectedOptionName}"</p>
             <div className="flex flex-col gap-3 w-full">
-                <button 
-                    onClick={handleFinalVote}
-                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transform active:scale-95 transition-all flex items-center justify-center gap-2"
-                >
-                    Sign & Vote <MdCheckCircle />
-                </button>
-
-                <button 
-                    onClick={() => setConfirmChoice(null)}
-                    className="w-full py-3 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold rounded-xl"
-                >
-                    Back
-                </button>
+                <button onClick={handleFinalVote} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2">Sign & Vote <MdCheckCircle /></button>
+                <button onClick={() => setConfirmChoice(null)} className="w-full py-3 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold rounded-xl">Back</button>
             </div>
         </div>
       )}
 
-      {/* KARTU UTAMA */}
+      {/* TAMPILAN KARTU DEPAN */}
       <div className={`mb-4 p-4 rounded-full ${userHasVoted ? 'bg-green-100 text-green-600' : 'bg-gray-50 dark:bg-gray-800 text-blue-500'}`}>
         {userHasVoted ? <MdCheckCircle className="text-4xl" /> : <MdHowToVote className="text-4xl" />}
       </div>
@@ -185,26 +164,21 @@ export default function SwipeCard({ address, onSwipe, index }: Props) {
       </h3>
 
       <p className="text-gray-500 dark:text-gray-400 font-medium text-sm mt-2">
-        {total} people voted {userHasVoted && <span className="text-green-500 font-bold ml-1">(You Voted)</span>}
+        {total} votes {userHasVoted && <span className="text-green-500 font-bold ml-1">(Voted)</span>}
       </p>
 
-      {/* INDIKATOR SWIPE (Visual Hint) */}
+      {/* NAVIGASI BAWAH */}
       <div className="absolute bottom-6 flex justify-between w-full px-8">
         <div className="flex items-center gap-1 text-red-400/80 dark:text-red-500/80 font-black text-xs tracking-widest">
-            {/* Teks Kiri selalu sama */}
             <MdArrowBack /> SKIP
         </div>
-        
-        {/* Teks Kanan berubah tergantung status vote */}
         <div className={`flex items-center gap-1 font-black text-xs tracking-widest ${userHasVoted ? 'text-gray-300 dark:text-gray-600' : 'text-blue-500/80 dark:text-blue-400/80'}`}>
-            {userHasVoted ? 
-                <span className="flex items-center gap-1">ALREADY VOTED <MdCheckCircle/></span> 
-                : 
-                <span className="flex items-center gap-1">VOTE <MdArrowForward /></span>
-            } 
+            {userHasVoted ? <span className="flex items-center gap-1">DONE <MdCheckCircle/></span> : <span className="flex items-center gap-1">VOTE <MdArrowForward /></span>} 
         </div>
       </div>
 
     </motion.div>
   );
-}
+});
+
+export default SwipeCard;

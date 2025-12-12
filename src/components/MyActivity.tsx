@@ -3,11 +3,10 @@
 import { useState } from "react";
 import { useAccount, useReadContract } from "wagmi";
 import { FACTORY_ABI, FACTORY_ADDRESS, POLL_ABI } from "~/app/constants";
-import { MdClose, MdVisibility, MdPerson, MdPublic, MdHistory } from "react-icons/md";
-import VoterList from "./VoterList";
+import { MdPublic, MdHistory } from "react-icons/md";
 
-// --- COMPONENT ITEM (Dengan Logika Filter) ---
-function PollItem({ address, onClick, filterMode }: { address: string, onClick: () => void, filterMode: "all" | "mine" }) {
+// --- COMPONENT ITEM (Versi Ringan Tanpa onClick) ---
+function PollItem({ address, filterMode }: { address: string, filterMode: "all" | "mine" }) {
   const { address: userAddress } = useAccount();
 
   // 1. Ambil Data Poll
@@ -17,7 +16,7 @@ function PollItem({ address, onClick, filterMode }: { address: string, onClick: 
     functionName: "getPollInfo",
   });
 
-  // 2. Cek Status Vote User (Khusus untuk Tab My History)
+  // 2. Cek Status Vote User
   const { data: hasVoted } = useReadContract({
     address: address as `0x${string}`,
     abi: POLL_ABI,
@@ -26,28 +25,29 @@ function PollItem({ address, onClick, filterMode }: { address: string, onClick: 
   });
 
   // LOGIKA FILTER: 
-  // Jika tab "mine" (My History) TAPI user belum vote, jangan tampilkan (return null)
   if (filterMode === "mine" && !hasVoted) return null;
-
   if (!pollData) return null;
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [question, , count1, , count2] = pollData as any;
   const total = Number(count1) + Number(count2);
 
   return (
     <div 
-        onClick={onClick}
-        className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 rounded-xl shadow-sm mb-3 cursor-pointer hover:border-blue-500 transition-all group animate-in fade-in slide-in-from-bottom-2"
+        className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 rounded-xl shadow-sm mb-3 hover:border-blue-500 transition-all group animate-in fade-in slide-in-from-bottom-2"
     >
       <div className="flex justify-between items-start">
           <h3 className="font-bold text-md text-gray-800 dark:text-gray-200 line-clamp-1">{question}</h3>
-          <MdVisibility className="text-gray-300 group-hover:text-blue-500" />
       </div>
       <div className="mt-2 flex justify-between text-xs text-gray-500 dark:text-gray-400">
         <span>Total Votes: <span className="font-bold text-blue-600">{total}</span></span>
-        <span className="text-[10px] bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
-            {filterMode === 'mine' ? "You Voted ✅" : "See voters"}
-        </span>
+        
+        {/* Tampilkan badge hanya jika di tab My History */}
+        {filterMode === 'mine' && (
+            <span className="text-[10px] bg-green-100 dark:bg-green-900/30 text-green-600 px-2 py-0.5 rounded font-bold">
+                You Voted ✅
+            </span>
+        )}
       </div>
     </div>
   );
@@ -55,9 +55,7 @@ function PollItem({ address, onClick, filterMode }: { address: string, onClick: 
 
 // --- MAIN COMPONENT ---
 export default function MyActivity() {
-  const [selectedPoll, setSelectedPoll] = useState<string | null>(null);
-  
-  // Tab State
+  // Hapus state selectedPoll karena tidak ada modal lagi
   const [filterMode, setFilterMode] = useState<"all" | "mine">("all");
 
   const { data: allPolls, isLoading, refetch } = useReadContract({
@@ -105,31 +103,15 @@ export default function MyActivity() {
             <PollItem 
                 key={pollAddr} 
                 address={pollAddr} 
-                filterMode={filterMode} // Pass filter mode ke anak
-                onClick={() => setSelectedPoll(pollAddr)} 
+                filterMode={filterMode} 
             />
           ))
       )}
 
-      {/* Jika di tab My History kosong */}
       {filterMode === "mine" && (
           <p className="text-center text-[10px] text-gray-300 mt-4">Showing polls you voted on.</p>
       )}
 
-      {/* MODAL VOTERS */}
-      {selectedPoll && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-gray-950 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-800">
-            <div className="flex justify-between items-center p-4 border-b border-gray-100 dark:border-gray-800">
-                <h3 className="font-bold text-lg">Voters List</h3>
-                <button onClick={() => setSelectedPoll(null)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
-                    <MdClose className="text-xl" />
-                </button>
-            </div>
-            <VoterList pollAddress={selectedPoll} />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

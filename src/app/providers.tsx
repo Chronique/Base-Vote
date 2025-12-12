@@ -15,15 +15,14 @@ import {
 } from "@rainbow-me/rainbowkit/wallets";
 import { base } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { WagmiProvider, createConfig, http } from "wagmi"; 
+// PENTING: Import 'fallback'
+import { WagmiProvider, createConfig, http, fallback } from "wagmi"; 
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes";
 import { farcasterFrame } from "@farcaster/miniapp-wagmi-connector";
 
 const queryClient = new QueryClient();
-
 const projectId = process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || "YOUR_PROJECT_ID";
 
-// SETUP WALLET RAINBOWKIT
 const rainbowKitConnectors = connectorsForWallets(
   [
     {
@@ -42,12 +41,20 @@ const rainbowKitConnectors = connectorsForWallets(
   }
 );
 
-// === BAGIAN INI YANG DIUBAH ===
+// === KONFIGURASI RPC YANG LEBIH KUAT ===
 const config = createConfig({
   chains: [base],
   transports: {
-    // Gunakan RPC Alchemy jika ada di env, jika tidak fallback ke public (yang sering gagal)
-    [base.id]: http(process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL || "https://mainnet.base.org"),
+    [base.id]: fallback([
+      // 1. PRIORITAS UTAMA: QuickNode atau Ankr (Wajib isi di Env Var Vercel!)
+      http(process.env.NEXT_PUBLIC_QUICKNODE_RPC_URL), 
+      
+      // 2. CADANGAN: Base Official Public RPC (Limit lumayan longgar, ~2000 blok)
+      http("https://mainnet.base.org"),
+      
+      // 3. CADANGAN TERAKHIR: Alchemy (Karena limit log cuma 10 blok, taruh bawah aja)
+      http(process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL),
+    ]),
   },
   connectors: [
     ...rainbowKitConnectors, 
@@ -70,7 +77,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
 function RainbowKitWrapper({ children }: { children: React.ReactNode }) {
   const { resolvedTheme } = useTheme();
-  
   return (
     <RainbowKitProvider 
       theme={resolvedTheme === "dark" ? darkTheme() : lightTheme()} 

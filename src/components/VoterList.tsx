@@ -12,10 +12,8 @@ interface VoterData {
   timestamp: bigint;
 }
 
-// --- Row Component (Optimized) ---
+// --- Row Component ---
 const VoterRow = ({ voter, choice, opt1, opt2 }: { voter: string, choice: number, opt1: string, opt2: string }) => {
-  // OPTIMIZATION: Removed useEnsName hook to prevent RPC rate limiting / freezing.
-  // Just show a truncated address instead.
   const displayName = `${voter.slice(0, 6)}...${voter.slice(-4)}`;
   
   const choiceText = choice === 1 ? opt1 : opt2;
@@ -49,8 +47,10 @@ export default function VoterList({ address, opt1, opt2 }: Props) {
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Define Event ABI
-  const voteCastEvent = parseAbiItem("event VoteCast(address indexed voter, uint256 choice, uint256 timestamp)");
+  // === PERBAIKAN DI SINI (Sesuai ABI Kamu) ===
+  // Nama Event: NewVote
+  // Tipe Choice: uint8
+  const voteCastEvent = parseAbiItem("event NewVote(address indexed voter, uint8 choice, uint256 timestamp)");
 
   useEffect(() => {
     async function fetchVoters() {
@@ -59,36 +59,28 @@ export default function VoterList({ address, opt1, opt2 }: Props) {
       setErrorMsg(null);
       
       try {
-        // 1. Get current block number
         const currentBlock = await publicClient.getBlockNumber();
-        
-        // 2. CRITICAL FIX: Limit the search range.
-        // Searching from block 0 (genesis) causes RPC Timeout errors on public nodes.
-        // We limit to the last 50,000 blocks (approx. 24-48 hours on Base).
-        // If your poll is older, you might need an Indexer (The Graph) instead of raw RPC calls.
-        const range = 50000n; 
+        const range = 30000n; 
         const fromBlockCalc = currentBlock - range > 0n ? currentBlock - range : 0n;
-
-        // console.log(`Fetching logs from block ${fromBlockCalc} to ${currentBlock}...`);
 
         const logs = await publicClient.getLogs({
           address: address as `0x${string}`,
-          event: voteCastEvent,
+          event: voteCastEvent, // Menggunakan event NewVote
           fromBlock: fromBlockCalc, 
           toBlock: 'latest' 
         });
 
-        // 3. Format logs
         const formattedVoters: VoterData[] = logs.map(log => ({
           voter: log.args.voter as string,
           choice: Number(log.args.choice),
           timestamp: log.args.timestamp as bigint,
-        })).sort((a, b) => Number(b.timestamp) - Number(a.timestamp)); // Sort: Newest first
+        })).sort((a, b) => Number(b.timestamp) - Number(a.timestamp)); 
 
         setVoters(formattedVoters);
       } catch (e: any) {
         console.error("Error fetching vote logs:", e);
-        setErrorMsg("Failed to load voters (RPC Error). Please try again later.");
+        // Jangan tampilkan error merah mencolok kalau cuma masalah RPC sesaat
+        setErrorMsg("Failed to load voters. Pull to refresh.");
       } finally {
         setIsLoadingLogs(false);
       }
@@ -100,15 +92,7 @@ export default function VoterList({ address, opt1, opt2 }: Props) {
   if (isLoadingLogs) {
     return (
         <div className="text-center p-6 text-gray-500 dark:text-gray-400 animate-pulse">
-            Fetching blockchain data...
-        </div>
-    );
-  }
-
-  if (errorMsg) {
-    return (
-        <div className="text-center p-6 text-red-500 text-sm">
-            {errorMsg}
+            Fetching voters...
         </div>
     );
   }
@@ -116,7 +100,7 @@ export default function VoterList({ address, opt1, opt2 }: Props) {
   if (voters.length === 0) {
     return (
         <div className="text-center p-6 text-gray-500 dark:text-gray-400">
-            No votes found recently.
+            No voters found (yet).
         </div>
     );
   }
