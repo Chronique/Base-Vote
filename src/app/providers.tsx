@@ -3,7 +3,7 @@
 import * as React from "react";
 import {
   RainbowKitProvider,
-  connectorsForWallets, // Gunakan ini untuk setup wallet manual
+  connectorsForWallets,
   darkTheme,
   lightTheme,
 } from "@rainbow-me/rainbowkit";
@@ -12,10 +12,10 @@ import {
   metaMaskWallet,
   rainbowWallet,
   walletConnectWallet,
-} from "@rainbow-me/rainbowkit/wallets"; // Import wallet standar
+} from "@rainbow-me/rainbowkit/wallets";
 import { base } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { WagmiProvider, createConfig, http } from "wagmi"; // Kita pakai createConfig (native Wagmi)
+import { WagmiProvider, createConfig, http } from "wagmi"; 
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes";
 import { farcasterFrame } from "@farcaster/miniapp-wagmi-connector";
 
@@ -23,8 +23,7 @@ const queryClient = new QueryClient();
 
 const projectId = process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || "YOUR_PROJECT_ID";
 
-// 1. SETUP WALLET RAINBOWKIT
-// Kita definisikan wallet apa saja yang mau muncul di tombol Connect
+// SETUP WALLET RAINBOWKIT
 const rainbowKitConnectors = connectorsForWallets(
   [
     {
@@ -43,17 +42,15 @@ const rainbowKitConnectors = connectorsForWallets(
   }
 );
 
-// 2. BUAT CONFIG WAGMI MANUAL
-// Di sini kita gabungkan konektor RainbowKit + Konektor Farcaster
+// === BAGIAN INI YANG DIUBAH ===
 const config = createConfig({
   chains: [base],
   transports: {
-    [base.id]: http(),
+    // Gunakan RPC Alchemy jika ada di env, jika tidak fallback ke public (yang sering gagal)
+    [base.id]: http(process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL || "https://mainnet.base.org"),
   },
   connectors: [
-    // Masukkan konektor RainbowKit (hasil dari connectorsForWallets)
     ...rainbowKitConnectors, 
-    // Masukkan konektor Farcaster (ini yang bikin error tadi kalau pakai getDefaultConfig)
     farcasterFrame() 
   ],
   ssr: true,
