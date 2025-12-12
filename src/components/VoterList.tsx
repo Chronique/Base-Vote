@@ -2,21 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { MdPerson } from "react-icons/md";
-// Import Public Client untuk baca Event Logs
 import { usePublicClient } from "wagmi";
 import { parseAbiItem } from "viem";
 
-// Tipe Data Voter
+// Voter Data Type
 interface VoterData {
   voter: string;
   choice: number;
   timestamp: bigint;
 }
 
-// --- Component Baris per Voter (Disederhanakan tanpa useEnsName berat) ---
+// --- Row Component (Optimized) ---
 const VoterRow = ({ voter, choice, opt1, opt2 }: { voter: string, choice: number, opt1: string, opt2: string }) => {
-  // OPTIMISASI: Menghapus useEnsName di sini agar tidak spam request RPC (penyebab freeze).
-  // Cukup tampilkan address yang dipendekkan.
+  // OPTIMIZATION: Removed useEnsName hook to prevent RPC rate limiting / freezing.
+  // Just show a truncated address instead.
   const displayName = `${voter.slice(0, 6)}...${voter.slice(-4)}`;
   
   const choiceText = choice === 1 ? opt1 : opt2;
@@ -37,7 +36,7 @@ const VoterRow = ({ voter, choice, opt1, opt2 }: { voter: string, choice: number
   );
 };
 
-// --- Komponen Utama VoterList ---
+// --- Main VoterList Component ---
 interface Props {
   address: string;
   opt1: string;
@@ -50,6 +49,7 @@ export default function VoterList({ address, opt1, opt2 }: Props) {
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Define Event ABI
   const voteCastEvent = parseAbiItem("event VoteCast(address indexed voter, uint256 choice, uint256 timestamp)");
 
   useEffect(() => {
@@ -59,17 +59,17 @@ export default function VoterList({ address, opt1, opt2 }: Props) {
       setErrorMsg(null);
       
       try {
-        // MENDAPATKAN BLOCK NUMBER SAAT INI
+        // 1. Get current block number
         const currentBlock = await publicClient.getBlockNumber();
         
-        // OPTIMISASI PENTING:
-        // Jangan fetch dari 0n (fromBlock: 0n) karena akan Time Out di public RPC.
-        // Kita coba fetch 50,000 block terakhir saja (sekitar 1-2 hari terakhir di Base).
-        // Jika poll dibuat lebih lama dari itu, kamu butuh "The Graph" atau Indexer.
+        // 2. CRITICAL FIX: Limit the search range.
+        // Searching from block 0 (genesis) causes RPC Timeout errors on public nodes.
+        // We limit to the last 50,000 blocks (approx. 24-48 hours on Base).
+        // If your poll is older, you might need an Indexer (The Graph) instead of raw RPC calls.
         const range = 50000n; 
         const fromBlockCalc = currentBlock - range > 0n ? currentBlock - range : 0n;
 
-        console.log(`Fetching logs from block ${fromBlockCalc} to ${currentBlock}...`);
+        // console.log(`Fetching logs from block ${fromBlockCalc} to ${currentBlock}...`);
 
         const logs = await publicClient.getLogs({
           address: address as `0x${string}`,
@@ -78,16 +78,17 @@ export default function VoterList({ address, opt1, opt2 }: Props) {
           toBlock: 'latest' 
         });
 
+        // 3. Format logs
         const formattedVoters: VoterData[] = logs.map(log => ({
           voter: log.args.voter as string,
           choice: Number(log.args.choice),
           timestamp: log.args.timestamp as bigint,
-        })).sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+        })).sort((a, b) => Number(b.timestamp) - Number(a.timestamp)); // Sort: Newest first
 
         setVoters(formattedVoters);
       } catch (e: any) {
         console.error("Error fetching vote logs:", e);
-        setErrorMsg("Gagal memuat data (RPC Error). Coba refresh.");
+        setErrorMsg("Failed to load voters (RPC Error). Please try again later.");
       } finally {
         setIsLoadingLogs(false);
       }
@@ -99,7 +100,7 @@ export default function VoterList({ address, opt1, opt2 }: Props) {
   if (isLoadingLogs) {
     return (
         <div className="text-center p-6 text-gray-500 dark:text-gray-400 animate-pulse">
-            Sedang mengambil data blockchain...
+            Fetching blockchain data...
         </div>
     );
   }
@@ -115,7 +116,7 @@ export default function VoterList({ address, opt1, opt2 }: Props) {
   if (voters.length === 0) {
     return (
         <div className="text-center p-6 text-gray-500 dark:text-gray-400">
-            Belum ada vote (atau vote terlalu lama).
+            No votes found recently.
         </div>
     );
   }
@@ -124,7 +125,7 @@ export default function VoterList({ address, opt1, opt2 }: Props) {
     <div className="divide-y divide-gray-100 dark:divide-gray-800">
       {voters.map((v, index) => (
         <VoterRow 
-          key={`${v.voter}-${index}`} // Key unik
+          key={`${v.voter}-${index}`} 
           voter={v.voter} 
           choice={v.choice} 
           opt1={opt1} 
