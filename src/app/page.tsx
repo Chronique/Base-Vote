@@ -2,15 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-// Hapus import Image karena tidak pakai gambar lagi
 import CreateQuest from "~/components/CreateQuest";
 import QuestList from "~/components/QuestList";
 import MyActivity from "~/components/MyActivity"; 
 import { sdk } from "@farcaster/miniapp-sdk"; 
 import { useConnect, useAccount } from "wagmi"; 
-// Import Framer Motion
 import { motion } from "framer-motion"; 
-import { MdHomeFilled, MdAddCircle, MdPerson, MdHowToVote, MdBallot, MdAddToHomeScreen, MdShare, MdRocketLaunch } from "react-icons/md";
+// MdRocketLaunch dihapus, kita pakai MdHowToVote untuk banner
+import { MdHomeFilled, MdAddCircle, MdPerson, MdHowToVote, MdBallot, MdAddToHomeScreen, MdShare } from "react-icons/md";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"feed" | "create" | "profile">("feed");
@@ -48,7 +47,7 @@ export default function Home() {
     try {
       await sdk.actions.addFrame();
       setIsAdded(true);
-      alert("App added successfully! 🎉");
+      alert("App added successfully! ");
     } catch (error) {
       console.error("Failed to add frame:", error);
     }
@@ -67,6 +66,8 @@ export default function Home() {
       
       {/* === NAVBAR === */}
       <nav className="w-full bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 px-4 py-3 flex justify-between items-center sticky top-0 z-50 transition-colors">
+        
+        {/* LOGO KIRI */}
         <div className="flex items-center gap-3">
             <motion.div 
                 initial={{ scale: 0, rotate: -180 }}
@@ -86,17 +87,42 @@ export default function Home() {
             </div>
         </div>
 
+        {/* AREA KANAN: SPLIT BUTTON + WALLET */}
         <div className="flex items-center gap-2">
-          <button onClick={handleShare} className="p-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors">
-              <MdShare className="text-xl" />
-          </button>
-          {!isAdded && (
-            <button onClick={handleAddApp} className="p-2 bg-gray-100 dark:bg-gray-800 text-blue-600 rounded-full hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors">
-                <MdAddToHomeScreen className="text-xl" />
-            </button>
-          )}
+          
+          {/* === SPLIT BUTTON (SHARE | ADD) === */}
+          {/* Container "Kapsul" */}
+          <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm p-0.5">
+              
+              {/* Tombol Kiri: SHARE */}
+              <button 
+                onClick={handleShare} 
+                className="p-2 px-3 rounded-l-full hover:bg-white dark:hover:bg-gray-700 text-blue-600 transition-colors"
+                title="Share"
+              >
+                  <MdShare className="text-xl" />
+              </button>
+
+              {/* Garis Pemisah (Divider) - Hanya muncul jika tombol Add ada */}
+              {!isAdded && (
+                  <div className="w-[1px] h-5 bg-gray-300 dark:bg-gray-600 mx-0.5"></div>
+              )}
+
+              {/* Tombol Kanan: ADD APP (Kondisional) */}
+              {!isAdded && (
+                <button 
+                    onClick={handleAddApp} 
+                    className="p-2 px-3 rounded-r-full hover:bg-white dark:hover:bg-gray-700 text-blue-600 transition-colors"
+                    title="Add to Home"
+                >
+                    <MdAddToHomeScreen className="text-xl" />
+                </button>
+              )}
+          </div>
+
+          {/* Connect Wallet / Avatar */}
           {farcasterUser ? (
-            <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 pr-4 pl-1 py-1 rounded-full border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 pr-4 pl-1 py-1 rounded-full border border-gray-200 dark:border-gray-700 ml-1">
                {farcasterUser.pfpUrl ? (
                  // eslint-disable-next-line @next/next/no-img-element
                  <img src={farcasterUser.pfpUrl} alt="User" className="w-8 h-8 rounded-full border-2 border-white dark:border-gray-900" />
@@ -107,7 +133,9 @@ export default function Home() {
                )}
             </div>
           ) : (
-            <ConnectButton showBalance={false} accountStatus="avatar" chainStatus="none" />
+            <div className="ml-1">
+                <ConnectButton showBalance={false} accountStatus="avatar" chainStatus="none" />
+            </div>
           )}
         </div>
       </nav>
@@ -130,30 +158,29 @@ export default function Home() {
           // === TAB FEED ===
           <div className="flex flex-col gap-6">
              
-             {/* === BANNER GRADIENT + ANIMASI TEKS LOOPING === */}
+             {/* === BANNER GRADIENT + ANIMASI === */}
              <motion.div 
                 initial={{ opacity: 0, y: 20, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                // Ganti gambar dengan Gradient Biru ke Putih (atau abu-abu gelap di dark mode)
-                className="relative w-full h-40 rounded-3xl overflow-hidden shadow-2xl group bg-gradient-to-r from-blue-600 via-blue-400 to-white dark:to-gray-800"
+                className="relative w-full h-40 rounded-3xl overflow-hidden shadow-2xl group bg-gradient-to-r from-blue-600 via-blue-500 to-white dark:to-gray-800"
              >
-                {/* Elemen Dekorasi Lingkaran (Opsional, biar gradien lebih cantik) */}
+                {/* Dekorasi Background */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -translate-y-10 translate-x-10"></div>
                 
-                {/* Container Teks dengan Animasi LOOPING */}
+                {/* Teks dengan Animasi Looping */}
                 <div className="absolute inset-0 flex flex-col justify-center px-6">
                     <motion.div
-                        // Animasi Naik Turun Terus Menerus
                         animate={{ y: [0, -6, 0] }}
                         transition={{ 
-                            duration: 4,      // Durasi satu putaran
-                            repeat: Infinity, // Ulangi selamanya
-                            ease: "easeInOut" // Gerakan halus
+                            duration: 4, 
+                            repeat: Infinity, 
+                            ease: "easeInOut" 
                         }}
                     >
+                        {/* UPDATE: Icon diganti MdHowToVote (Material Design Vote) */}
                         <h2 className="text-2xl font-black mb-2 drop-shadow-sm text-white flex items-center gap-2">
-                           Start Voting <MdRocketLaunch className="text-yellow-300 animate-pulse" />
+                           Start Voting <MdHowToVote className="text-blue-100 rotate-12" />
                         </h2>
                         <p className="text-sm font-bold text-blue-50 max-w-[240px] leading-relaxed drop-shadow-sm">
                            Decentralized polling on Base. <br/>
@@ -163,7 +190,7 @@ export default function Home() {
                 </div>
              </motion.div>
              
-             {/* JUDUL FEED */}
+             {/* LIST JUDUL */}
              <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
                  <div className="flex items-center gap-2 mb-4 px-1">
                     <div className="h-6 w-1 bg-blue-600 rounded-full"></div>
