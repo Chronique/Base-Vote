@@ -61,10 +61,9 @@ export default function Home() {
   };
 
   return (
-    // FIX 1: Gunakan h-[100dvh] dan fixed inset-0 agar tidak bisa scroll body
     <main className="h-[100dvh] w-full bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans flex flex-col fixed inset-0 overflow-hidden transition-colors duration-300">
       
-      {/* === NAVBAR (Fixed Top) === */}
+      {/* === NAVBAR === */}
       <nav className="flex-none w-full bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 px-4 py-3 flex justify-between items-center z-50">
         <div className="flex items-center gap-3">
             <motion.div 
@@ -123,8 +122,7 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* === CONTENT AREA (Flexible) === */}
-      {/* FIX 2: Area ini mengisi sisa ruang. Scroll hanya aktif jika BUKAN feed. */}
+      {/* === CONTENT AREA === */}
       <div className="flex-1 relative w-full max-w-lg mx-auto overflow-hidden">
         <div className={`absolute inset-0 px-4 pt-4 pb-24 ${activeTab === 'profile' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
             
@@ -143,28 +141,51 @@ export default function Home() {
             ) : (
             // === TAB FEED ===
             <div className="flex flex-col h-full">
-                {/* Banner - Sedikit dikecilkan tingginya ke h-36 agar muat di HP kecil */}
-                <motion.div 
-                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
-                    className="flex-none relative w-full h-36 rounded-3xl overflow-hidden shadow-2xl group bg-gradient-to-r from-blue-600 via-blue-500 to-white dark:to-gray-800 mb-4"
-                >
+                
+                {/* === BANNER BARU: BASE LOGO REVEAL === */}
+                <div className="flex-none relative w-full h-28 rounded-3xl overflow-hidden shadow-xl group bg-gradient-to-r from-blue-600 to-blue-400 dark:to-gray-800 mb-4 flex items-center px-6 gap-4">
+                    
+                    {/* Background Decor */}
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -translate-y-10 translate-x-10"></div>
-                    <div className="absolute inset-0 flex flex-col justify-center px-6">
+                    
+                    {/* 1. LOGO BASE (Jangkar / Penutup) */}
+                    {/* z-index 20 supaya berada DI ATAS teks yg mau keluar */}
+                    <motion.div 
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        className="relative z-20 flex-none w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg shadow-blue-900/20"
+                    >
+                        {/* Visualisasi Logo Base Sederhana (Lingkaran Biru + Garis) */}
+                        <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center relative overflow-hidden">
+                           {/* Garis lengkung khas Base (simulasi CSS) */}
+                           <div className="absolute top-2 w-8 h-8 border-t-4 border-white rounded-full"></div>
+                        </div>
+                    </motion.div>
+
+                    {/* 2. TEKS ANIMASI (Keluar dari belakang logo) */}
+                    {/* z-index 10 (Lebih rendah dari logo) */}
+                    <div className="relative z-10 flex flex-col justify-center overflow-hidden h-full py-2">
                         <motion.div
-                            animate={{ y: [0, -6, 0] }}
-                            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                            initial={{ x: -100, opacity: 0 }} // Mulai dari kiri (belakang logo)
+                            animate={{ x: 0, opacity: 1 }}    // Geser ke kanan (muncul)
+                            transition={{ 
+                                type: "spring", 
+                                damping: 15, 
+                                stiffness: 100, 
+                                delay: 0.3 // Tunggu logo muncul dulu
+                            }}
                         >
-                            <h2 className="text-2xl font-black mb-2 drop-shadow-sm text-white flex items-center gap-2">
-                            Start Voting <MdHowToVote className="text-blue-100 rotate-12" />
+                            <h2 className="text-2xl font-black text-white drop-shadow-md leading-tight">
+                                Start Voting
                             </h2>
-                            <p className="text-sm font-bold text-blue-50 max-w-[240px] leading-relaxed drop-shadow-sm">
-                            Decentralized polling on Base. <br/> Your vote, your voice.
+                            <p className="text-xs font-bold text-blue-100 opacity-90 mt-1">
+                                Your voice onchain.
                             </p>
                         </motion.div>
                     </div>
-                </motion.div>
+
+                </div>
                 
                 {/* List Polls */}
                 <div className="flex-1 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100 flex flex-col">
@@ -172,7 +193,6 @@ export default function Home() {
                         <div className="h-6 w-1 bg-blue-600 rounded-full"></div>
                         <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">Latest Polls</h2>
                     </div>
-                    {/* Container QuestList akan menyesuaikan sisa tinggi */}
                     <div className="flex-1 flex items-center justify-center -mt-4">
                         <QuestList />
                     </div>
@@ -183,7 +203,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* === BOTTOM NAV (Fixed Bottom) === */}
+      {/* === BOTTOM NAV === */}
       <div className="flex-none w-full bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex justify-around py-3 z-50 pb-6 max-w-lg mx-auto shadow-[0_-4px_15px_-3px_rgba(0,0,0,0.1)]">
         <button onClick={() => setActiveTab("feed")} className={`flex flex-col items-center gap-1 w-1/3 transition-all active:scale-90 ${activeTab === "feed" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-600"}`}>
           <MdHomeFilled className="text-2xl" /><span className="text-[10px] font-bold">FEED</span>
