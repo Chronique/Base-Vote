@@ -1,95 +1,96 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { FACTORY_ABI, FACTORY_ADDRESS } from "~/app/constants";
+import { useState } from "react";
+// Ganti ke useSendCalls
+import { useSendCalls } from "wagmi/experimental";
+import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants";
+import { MdAddCircle, MdOutlinePoll } from "react-icons/md";
+import { encodeFunctionData } from "viem";
+import { Attribution } from "ox/erc8021";
 
 export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
-  // === DATA KEMBALI KOSONG (NORMAL) ===
   const [question, setQuestion] = useState("");
   const [opt1, setOpt1] = useState("");
   const [opt2, setOpt2] = useState("");
   
-  // Default 24 Jam
-  const [duration, setDuration] = useState("86400"); 
-
-  const { writeContract, data: hash, isPending } = useWriteContract();
-  const { isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
-
-  useEffect(() => {
-    if (isConfirmed) {
-      setQuestion(""); setOpt1(""); setOpt2("");
-      onSuccess();
-    }
-  }, [isConfirmed, onSuccess]);
+  // Ganti useWriteContract -> useSendCalls
+  const { sendCalls, status } = useSendCalls(); 
+  const isPending = status === 'pending';
 
   const handleCreate = () => {
-    if (!question || !opt1 || !opt2) return alert("Please fill all fields");
-    writeContract({
-      address: FACTORY_ADDRESS as `0x${string}`,
-      abi: FACTORY_ABI,
-      functionName: "createPoll",
-      args: [question, opt1, opt2, BigInt(duration)],
+    if (!question || !opt1 || !opt2) return;
+
+    // 1. Encode Function
+    const encodedData = encodeFunctionData({
+        abi: FACTORY_ABI,
+        functionName: "createPoll",
+        args: [question, opt1, opt2, 86400n] // Durasi 1 hari (contoh)
+    });
+
+    // 2. Kirim dengan Builder Code
+    sendCalls({
+        calls: [{
+            to: FACTORY_ADDRESS as `0x${string}`,
+            data: encodedData,
+        }],
+        capabilities: {
+            dataSuffix: Attribution.toDataSuffix({
+                codes: ["bc_2ivoo1oy"] // CODE KAMU
+            })
+        }
+    }, {
+        onSuccess: () => {
+            // Reset form & pindah tab setelah request dikirim (optimistic)
+            setQuestion("");
+            setOpt1("");
+            setOpt2("");
+            alert("Transaction submitted! 🚀");
+            onSuccess();
+        }
     });
   };
 
   return (
-    <div className="w-full max-w-md p-6 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 transition-colors">
-      <div className="space-y-4">
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-3xl shadow-lg">
+      <div className="flex flex-col gap-4">
+        {/* Form Inputs ... (sama seperti sebelumnya) ... */}
         <div>
-          <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Question</label>
-          <input 
-            type="text" 
-            placeholder="What's on your mind?" 
-            className="w-full p-3 border rounded-lg bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 transition-colors" 
-            value={question} 
-            onChange={e => setQuestion(e.target.value)} 
-          />
+            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Question</label>
+            <input 
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder="What's your favorite crypto?"
+                className="w-full mt-1 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+            />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Option 1</label>
-            <input 
-                type="text" 
-                placeholder="Yes" 
-                className="w-full p-3 border rounded-lg bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 transition-colors" 
-                value={opt1} 
-                onChange={e => setOpt1(e.target.value)} 
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Option 2</label>
-            <input 
-                type="text" 
-                placeholder="No" 
-                className="w-full p-3 border rounded-lg bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 transition-colors" 
-                value={opt2} 
-                onChange={e => setOpt2(e.target.value)} 
-            />
-          </div>
-        </div>
-
-        <div>
-           <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Duration</label>
-           <select 
-              value={duration} 
-              onChange={(e) => setDuration(e.target.value)} 
-              className="w-full p-3 border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-white cursor-pointer transition-colors"
-           >
-              <option value="86400">24 Hours</option>
-              <option value="604800">7 Days</option>
-              <option value="2592000">1 Month</option>
-              <option value="31536000">1 Year</option>
-           </select>
+            <div>
+                <label className="text-xs font-bold text-gray-500 uppercase ml-1">Option 1</label>
+                <input 
+                    value={opt1}
+                    onChange={(e) => setOpt1(e.target.value)}
+                    placeholder="Bitcoin"
+                    className="w-full mt-1 p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                />
+            </div>
+            <div>
+                <label className="text-xs font-bold text-gray-500 uppercase ml-1">Option 2</label>
+                <input 
+                    value={opt2}
+                    onChange={(e) => setOpt2(e.target.value)}
+                    placeholder="Ethereum"
+                    className="w-full mt-1 p-3 bg-pink-50 dark:bg-pink-900/10 border border-pink-100 dark:border-pink-900/30 rounded-xl focus:ring-2 focus:ring-pink-500 outline-none transition-all"
+                />
+            </div>
         </div>
 
         <button 
-            onClick={handleCreate} 
-            disabled={isPending} 
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-all disabled:bg-gray-400 dark:disabled:bg-gray-700"
+            onClick={handleCreate}
+            disabled={isPending || !question || !opt1 || !opt2}
+            className="mt-4 w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95"
         >
-          {isPending ? "Confirming..." : "Launch Poll"}
+            {isPending ? "Waiting Wallet..." : <>Create Poll <MdAddCircle className="text-xl" /></>}
         </button>
       </div>
     </div>
