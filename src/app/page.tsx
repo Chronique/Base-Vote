@@ -8,7 +8,6 @@ import MyActivity from "~/components/MyActivity";
 import { sdk } from "@farcaster/miniapp-sdk"; 
 import { useConnect, useAccount } from "wagmi"; 
 import { motion } from "framer-motion"; 
-// MdRocketLaunch dihapus, kita pakai MdHowToVote untuk banner
 import { MdHomeFilled, MdAddCircle, MdPerson, MdHowToVote, MdBallot, MdAddToHomeScreen, MdShare } from "react-icons/md";
 
 export default function Home() {
@@ -47,7 +46,7 @@ export default function Home() {
     try {
       await sdk.actions.addFrame();
       setIsAdded(true);
-      alert("App added successfully! ");
+      alert("App added successfully! 🎉");
     } catch (error) {
       console.error("Failed to add frame:", error);
     }
@@ -90,33 +89,29 @@ export default function Home() {
         {/* AREA KANAN: SPLIT BUTTON + WALLET */}
         <div className="flex items-center gap-2">
           
-          {/* === SPLIT BUTTON (SHARE | ADD) === */}
-          {/* Container "Kapsul" */}
-          <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm p-0.5">
+          {/* === MATERIAL 3 SPLIT BUTTON === */}
+          <div className="flex items-center rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shadow-sm overflow-hidden">
               
-              {/* Tombol Kiri: SHARE */}
+              {/* 1. Main Action: SHARE */}
               <button 
                 onClick={handleShare} 
-                className="p-2 px-3 rounded-l-full hover:bg-white dark:hover:bg-gray-700 text-blue-600 transition-colors"
-                title="Share"
+                className={`flex items-center justify-center p-2 px-3 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 active:bg-blue-100 transition-colors ${
+                    !isAdded ? "border-r border-gray-200 dark:border-gray-700" : ""
+                }`}
+                title="Share App"
               >
                   <MdShare className="text-xl" />
               </button>
 
-              {/* Garis Pemisah (Divider) - Hanya muncul jika tombol Add ada */}
+              {/* 2. Secondary Action: ADD APP (Muncul jika belum di-add) */}
               {!isAdded && (
-                  <div className="w-[1px] h-5 bg-gray-300 dark:bg-gray-600 mx-0.5"></div>
-              )}
-
-              {/* Tombol Kanan: ADD APP (Kondisional) */}
-              {!isAdded && (
-                <button 
+                  <button 
                     onClick={handleAddApp} 
-                    className="p-2 px-3 rounded-r-full hover:bg-white dark:hover:bg-gray-700 text-blue-600 transition-colors"
+                    className="flex items-center justify-center p-2 px-3 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 active:bg-blue-100 transition-colors"
                     title="Add to Home"
-                >
-                    <MdAddToHomeScreen className="text-xl" />
-                </button>
+                  >
+                      <MdAddToHomeScreen className="text-xl" />
+                  </button>
               )}
           </div>
 
