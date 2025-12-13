@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-// Import DUA hook: useSendCalls (Baru) dan useWriteContract (Lama/Fallback)
 import { useSendCalls } from "wagmi/experimental";
 import { useWriteContract } from "wagmi";
 import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants";
@@ -14,10 +13,8 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
   const [opt1, setOpt1] = useState("");
   const [opt2, setOpt2] = useState("");
   
-  // State loading manual
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Hook Wagmi
   const { sendCallsAsync } = useSendCalls(); 
   const { writeContractAsync } = useWriteContract();
 
@@ -28,29 +25,27 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
     try {
         console.log("🚀 Creating Poll...");
 
-        // Encode Data
         const encodedData = encodeFunctionData({
             abi: FACTORY_ABI,
             functionName: "createPoll",
             args: [question, opt1, opt2, 86400n] 
         });
 
-        // 1. COBA BUILDER CODE (useSendCalls)
+        // 1. TRY BUILDER CODE (useSendCalls)
         try {
              await sendCallsAsync({
                 calls: [{
                     to: FACTORY_ADDRESS as `0x${string}`,
                     data: encodedData,
-                    // HAPUS value: 0n
                 }],
                 capabilities: {
                     dataSuffix: Attribution.toDataSuffix({
-                        codes: ["bc_2ivoo1oy"] // KODE BARU KAMU
+                        codes: ["bc_2ivoo1oy"] 
                     })
                 }
             });
         } catch (sendCallsError) {
-             console.warn("⚠️ useSendCalls failed (mungkin di Farcaster), fallback to writeContract...", sendCallsError);
+             console.warn("⚠️ useSendCalls failed (likely Farcaster), fallback to writeContract...", sendCallsError);
              
              // 2. FALLBACK (writeContract)
              await writeContractAsync({
@@ -61,7 +56,6 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
              });
         }
 
-        // Sukses
         alert("Transaction submitted! 🚀");
         setQuestion("");
         setOpt1("");
@@ -70,9 +64,10 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
 
     } catch (finalError) {
         console.error("❌ Failed to create poll:", finalError);
-        alert("Gagal membuat poll. Cek console.");
+        // ALERT BAHASA INGGRIS
+        alert("Failed to create poll. Check console.");
     } finally {
-        setIsSubmitting(false); // Pastikan loading mati
+        setIsSubmitting(false); 
     }
   };
 
