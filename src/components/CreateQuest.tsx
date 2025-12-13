@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-// Import DUA hook juga
+// Import DUA hook: useSendCalls (Baru) dan useWriteContract (Lama/Fallback)
 import { useSendCalls } from "wagmi/experimental";
 import { useWriteContract } from "wagmi";
 import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants";
-import { MdAddCircle, MdOutlinePoll } from "react-icons/md";
+import { MdAddCircle } from "react-icons/md";
 import { encodeFunctionData } from "viem";
 import { Attribution } from "ox/erc8021";
 
@@ -14,7 +14,7 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
   const [opt1, setOpt1] = useState("");
   const [opt2, setOpt2] = useState("");
   
-  // State manual agar kontrol penuh
+  // State loading manual
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Hook Wagmi
@@ -41,15 +41,16 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
                 calls: [{
                     to: FACTORY_ADDRESS as `0x${string}`,
                     data: encodedData,
+                    // HAPUS value: 0n
                 }],
                 capabilities: {
                     dataSuffix: Attribution.toDataSuffix({
-                        codes: ["Bc_9fbxmq2a"] 
+                        codes: ["bc_2ivoo1oy"] // KODE BARU KAMU
                     })
                 }
             });
         } catch (sendCallsError) {
-             console.warn("⚠️ useSendCalls failed, fallback to writeContract...", sendCallsError);
+             console.warn("⚠️ useSendCalls failed (mungkin di Farcaster), fallback to writeContract...", sendCallsError);
              
              // 2. FALLBACK (writeContract)
              await writeContractAsync({
@@ -69,16 +70,15 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
 
     } catch (finalError) {
         console.error("❌ Failed to create poll:", finalError);
-        alert("Gagal membuat poll. Cek console atau saldo ETH.");
+        alert("Gagal membuat poll. Cek console.");
     } finally {
-        setIsSubmitting(false); // Pastikan loading mati apapun yang terjadi
+        setIsSubmitting(false); // Pastikan loading mati
     }
   };
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-3xl shadow-lg">
       <div className="flex flex-col gap-4">
-        {/* Form Inputs (Sama seperti sebelumnya) */}
         <div>
             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Question</label>
             <input 

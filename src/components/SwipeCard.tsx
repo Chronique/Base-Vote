@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, memo } from "react";
+// Import DUA hook: useSendCalls (Baru) dan useWriteContract (Lama/Fallback)
 import { useReadContract, useAccount, useWriteContract } from "wagmi"; 
 import { useSendCalls } from "wagmi/experimental"; 
 import { POLL_ABI } from "~/app/constants";
@@ -21,14 +22,14 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
   const [showSelection, setShowSelection] = useState(false);
   const [confirmChoice, setConfirmChoice] = useState<number | null>(null);
   
-  // State untuk loading manual agar tidak stuck
+  // State loading manual biar tombol gak stuck
   const [isVotingLoading, setIsVotingLoading] = useState(false);
 
   const { address: userAddress } = useAccount();
 
   // 1. SIAPKAN DUA METODE
-  const { sendCallsAsync } = useSendCalls();         
-  const { writeContractAsync } = useWriteContract(); 
+  const { sendCallsAsync } = useSendCalls();         // Senjata Utama (Builder Reward)
+  const { writeContractAsync } = useWriteContract(); // Senjata Cadangan (Pasti Bisa)
 
   const { data: pollData } = useReadContract({
     address: address as `0x${string}`,
@@ -62,6 +63,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
   const y = index === 0 ? 0 : 10;
   const userHasVoted = Boolean(hasVoted);
 
+  // === FUNGSI VOTE PINTAR (HYBRID) ===
   const handleFinalVote = async () => {
     if (!confirmChoice || isVotingLoading) return;
     setIsVotingLoading(true); // Mulai Loading
@@ -83,29 +85,28 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
             args: [confirmChoice]
         });
 
-        // COBA CARA 1: useSendCalls (Builder Reward)
-        // Kita pakai await sendCallsAsync agar bisa di-try-catch dengan benar
+        // CARA 1: useSendCalls (Dapat Reward)
         await sendCallsAsync({
             calls: [{
                 to: address as `0x${string}`,
                 data: encodedData,
-                // HAPUS value: 0n (PENTING!)
+                // Value: 0n DIHAPUS agar aman
             }],
             capabilities: {
                 dataSuffix: Attribution.toDataSuffix({
-                    codes: ["Bc_9fbxmq2a"] // Kode Builder Kamu
+                    codes: ["bc_2ivoo1oy"] // KODE BARU KAMU
                 })
             }
         });
         
-        // Jika sampai sini, berarti sukses submit (tapi belum tentu confirmed, tapi cukup untuk UI)
         await onSuccessUI();
 
     } catch (error) {
-        console.warn("⚠️ Gagal useSendCalls, mencoba fallback ke writeContract...", error);
+        console.warn("⚠️ Gagal di Farcaster/Wallet, pindah ke cara lama...", error);
         
         try {
             // CARA 2: FALLBACK (writeContract Biasa)
+            // Ini pasti jalan di semua wallet
             await writeContractAsync({
                 address: address as `0x${string}`,
                 abi: POLL_ABI,
@@ -116,14 +117,16 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
             await onSuccessUI();
         } catch (finalError: any) {
             console.error("❌ Total Failure:", finalError);
-            setIsVotingLoading(false); // Matikan loading jika gagal total
-            alert("Gagal Vote. Cek koneksi atau saldo ETH kamu.");
+            setIsVotingLoading(false); 
+            // Alert user kalau benar-benar gagal (misal saldo habis)
+            alert("Vote Gagal. Cek koneksi atau saldo ETH kamu.");
         }
     }
   };
 
   const selectedOptionName = confirmChoice === 1 ? opt1 : opt2;
 
+  // Render UI tetap sama seperti sebelumnya...
   return (
     <motion.div
       style={{ x, rotate, opacity, scale, y, backgroundColor: activeBg }}
@@ -159,7 +162,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         </div>
       )}
 
-      {/* LAYER KONFIRMASI */}
+      {/* LAYER KONFIRMASI (TOMBOL ANTI-STUCK) */}
       {confirmChoice && (
         <div className="absolute inset-0 z-50 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6 animate-in slide-in-from-right-10 duration-200">
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4 text-green-600 dark:text-green-400"><MdThumbUp className="text-3xl" /></div>
@@ -170,7 +173,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
                     disabled={isVotingLoading}
                     className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2"
                 >
-                    {isVotingLoading ? "Sign in Wallet..." : <>Sign & Vote <MdCheckCircle /></>}
+                    {isVotingLoading ? "Waiting Wallet..." : <>Sign & Vote <MdCheckCircle /></>}
                 </button>
                 <button 
                     onClick={() => setConfirmChoice(null)} 
@@ -183,7 +186,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         </div>
       )}
 
-      {/* KONTEN KARTU UTAMA */}
+      {/* KARTU UTAMA */}
       <div className={`mb-4 p-4 rounded-full ${userHasVoted ? 'bg-green-100 text-green-600' : 'bg-gray-50 dark:bg-gray-800 text-blue-500'}`}>
         {userHasVoted ? <MdCheckCircle className="text-4xl" /> : <MdHowToVote className="text-4xl" />}
       </div>
