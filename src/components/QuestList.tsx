@@ -8,7 +8,6 @@ import SwipeCard from "./SwipeCard";
 import CycleMeme from "./CycleMeme"; 
 
 export default function QuestList() {
-  // Tambahkan staleTime juga di sini biar listnya gak reload melulu
   const { data: allPolls, isLoading, refetch } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
@@ -18,12 +17,10 @@ export default function QuestList() {
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Memoize polls agar tidak direcompute setiap render
   const polls = useMemo(() => {
     return (allPolls as string[] || []).slice().reverse();
   }, [allPolls]);
 
-  // TAMPILAN LOADING
   if (isLoading) return (
     <div className="flex flex-col items-center justify-center py-40 space-y-3">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -32,16 +29,16 @@ export default function QuestList() {
   );
 
   const handleSwipe = () => {
-    // Delay sedikit agar animasi "terbang" selesai sebelum state diupdate
     setTimeout(() => {
         setCurrentIndex((prev) => prev + 1);
     }, 200); 
   };
 
-  // JIKA KARTU HABIS (Cycle Meme)
+  // === PERBAIKAN DI SINI: CycleMeme Container ===
   if (currentIndex >= polls.length && polls.length > 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-[65vh] w-full px-6">
+      // Pastikan container ini me-center isinya
+      <div className="h-[65vh] w-full flex items-center justify-center px-4 mt-4">
         <CycleMeme 
             onRefresh={() => { 
                 refetch(); 
@@ -52,7 +49,6 @@ export default function QuestList() {
     );
   }
 
-  // JIKA DATA KOSONG (Belum ada poll sama sekali)
   if (polls.length === 0) {
      return (
         <div className="flex flex-col items-center justify-center h-[65vh] text-center px-6">
@@ -65,8 +61,6 @@ export default function QuestList() {
   return (
     <div className="relative h-[65vh] w-full flex justify-center items-center mt-4">
       <AnimatePresence>
-        {/* Render hanya 2 kartu: Current dan Next. 
-            Kartu ketiga dst tidak perlu dirender agar ringan. */}
         {polls.slice(currentIndex, currentIndex + 2).map((pollAddress, i) => {
             const isFront = i === 0; 
             return (
