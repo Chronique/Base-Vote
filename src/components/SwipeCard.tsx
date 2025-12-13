@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, memo } from "react";
-import { useReadContract, useAccount } from "wagmi"; 
+// Import DUA hook: useSendCalls (Baru) dan useWriteContract (Lama/Fallback)
+import { useReadContract, useAccount, useWriteContract } from "wagmi"; 
 import { useSendCalls } from "wagmi/experimental"; 
 import { POLL_ABI } from "~/app/constants";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
@@ -22,7 +23,10 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
   const [confirmChoice, setConfirmChoice] = useState<number | null>(null);
 
   const { address: userAddress } = useAccount();
-  const { sendCalls } = useSendCalls();
+
+  // 1. SIAPKAN DUA SENJATA
+  const { sendCalls } = useSendCalls();          // Senjata Utama (Builder Reward)
+  const { writeContractAsync } = useWriteContract(); // Senjata Cadangan (Pasti Bisa), pakai Async biar bisa di-await
 
   const { data: pollData } = useReadContract({
     address: address as `0x${string}`,
@@ -64,37 +68,73 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
   const y = index === 0 ? 0 : 10;
   const userHasVoted = Boolean(hasVoted);
 
+  // === FUNGSI EKSEKUSI UTAMA ===
   const handleFinalVote = async () => {
     if (!confirmChoice) return;
 
-    const encodedData = encodeFunctionData({
-        abi: POLL_ABI,
-        functionName: "vote",
-        args: [confirmChoice]
-    });
+    // Fungsi Sukses (Animasi UI)
+    const onSuccessUI = async () => {
+        await animate(x, 500, { duration: 0.2 });
+        onSwipe("right");
+        setConfirmChoice(null);
+        setShowSelection(false);
+    };
 
-    sendCalls({
-        calls: [{
-            to: address as `0x${string}`,
-            data: encodedData,
-            value: 0n,
-        }],
-        capabilities: {
-            // === UPDATE KODE BARU DI SINI ===
-            dataSuffix: Attribution.toDataSuffix({
-                codes: ["Bc_9fbxmq2a"] 
-            })
+    try {
+        console.log("Mencoba Vote dengan Builder Code (useSendCalls)...");
+        
+        const encodedData = encodeFunctionData({
+            abi: POLL_ABI,
+            functionName: "vote",
+            args: [confirmChoice]
+        });
+
+        // COBA CARA 1: useSendCalls (Builder Reward)
+        sendCalls({
+            calls: [{
+                to: address as `0x${string}`,
+                data: encodedData,
+                // PERBAIKAN: Hapus baris 'value: 0n' biar gak error BigInt
+            }],
+            capabilities: {
+                dataSuffix: Attribution.toDataSuffix({
+                    codes: ["Bc_9fbxmq2a"] // Kode Builder Kamu
+                })
+            }
+        }, {
+            onSuccess: onSuccessUI,
+            onError: (err) => {
+                // Jika error, lempar ke catch untuk fallback
+                console.warn("Gagal useSendCalls, mencoba fallback...", err);
+                throw err; 
+            }
+        });
+
+    } catch (error) {
+        // CARA 2: FALLBACK (writeContract Biasa)
+        console.log("Menggunakan Fallback Standard (writeContract)...");
+        
+        try {
+            await writeContractAsync({
+                address: address as `0x${string}`,
+                abi: POLL_ABI,
+                functionName: "vote",
+                args: [confirmChoice],
+                // Value juga tidak perlu ditulis di sini
+            });
+            
+            // Jika sukses fallback
+            onSuccessUI();
+        } catch (finalError: any) {
+            console.error("Total Failure:", finalError);
+            alert("Gagal melakukan vote. Pastikan saldo cukup atau coba refresh.");
         }
-    });
-
-    await animate(x, 500, { duration: 0.2 });
-    onSwipe("right");
-    setConfirmChoice(null);
-    setShowSelection(false);
+    }
   };
 
   const selectedOptionName = confirmChoice === 1 ? opt1 : opt2;
 
+  // ... (Sisa Render JSX Tidak Berubah, copy-paste yang lama saja) ...
   return (
     <motion.div
       style={{ x, rotate, opacity, scale, y, backgroundColor: activeBg }}
