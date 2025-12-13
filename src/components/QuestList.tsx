@@ -38,7 +38,7 @@ export default function QuestList() {
   if (currentIndex >= polls.length && polls.length > 0) {
     return (
       // Pastikan container ini me-center isinya
-      <div className="h-[65vh] w-full flex items-center justify-center px-4 mt-4">
+      <div className="h-[55vh] w-full flex items-center justify-center px-4 mt-4">
         <CycleMeme 
             onRefresh={() => { 
                 refetch(); 
@@ -51,7 +51,7 @@ export default function QuestList() {
 
   if (polls.length === 0) {
      return (
-        <div className="flex flex-col items-center justify-center h-[65vh] text-center px-6">
+        <div className="flex flex-col items-center justify-center h-[55vh] text-center px-6">
             <p className="text-gray-500">No polls available yet.</p>
             <button onClick={() => refetch()} className="text-blue-500 text-sm mt-2">Refresh</button>
         </div>
@@ -59,7 +59,7 @@ export default function QuestList() {
   }
 
   return (
-    <div className="relative h-[65vh] w-full flex justify-center items-center mt-4">
+    <div className="relative h-[55vh] w-full flex justify-center items-center mt-4">
       <AnimatePresence>
         {polls.slice(currentIndex, currentIndex + 2).map((pollAddress, i) => {
             const isFront = i === 0; 

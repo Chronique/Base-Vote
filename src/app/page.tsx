@@ -61,12 +61,11 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans flex flex-col pb-24 transition-colors duration-300">
+    // FIX 1: Gunakan h-[100dvh] dan fixed inset-0 agar tidak bisa scroll body
+    <main className="h-[100dvh] w-full bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans flex flex-col fixed inset-0 overflow-hidden transition-colors duration-300">
       
-      {/* === NAVBAR === */}
-      <nav className="w-full bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 px-4 py-3 flex justify-between items-center sticky top-0 z-50 transition-colors">
-        
-        {/* LOGO KIRI */}
+      {/* === NAVBAR (Fixed Top) === */}
+      <nav className="flex-none w-full bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 px-4 py-3 flex justify-between items-center z-50">
         <div className="flex items-center gap-3">
             <motion.div 
                 initial={{ scale: 0, rotate: -180 }}
@@ -86,36 +85,25 @@ export default function Home() {
             </div>
         </div>
 
-        {/* AREA KANAN: SPLIT BUTTON + WALLET */}
         <div className="flex items-center gap-2">
-          
-          {/* === MATERIAL 3 SPLIT BUTTON === */}
+          {/* Split Button */}
           <div className="flex items-center rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shadow-sm overflow-hidden">
-              
-              {/* 1. Main Action: SHARE */}
               <button 
                 onClick={handleShare} 
-                className={`flex items-center justify-center p-2 px-3 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 active:bg-blue-100 transition-colors ${
-                    !isAdded ? "border-r border-gray-200 dark:border-gray-700" : ""
-                }`}
-                title="Share App"
+                className={`flex items-center justify-center p-2 px-3 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 active:bg-blue-100 transition-colors ${!isAdded ? "border-r border-gray-200 dark:border-gray-700" : ""}`}
               >
                   <MdShare className="text-xl" />
               </button>
-
-              {/* 2. Secondary Action: ADD APP (Muncul jika belum di-add) */}
               {!isAdded && (
                   <button 
                     onClick={handleAddApp} 
                     className="flex items-center justify-center p-2 px-3 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 active:bg-blue-100 transition-colors"
-                    title="Add to Home"
                   >
                       <MdAddToHomeScreen className="text-xl" />
                   </button>
               )}
           </div>
 
-          {/* Connect Wallet / Avatar */}
           {farcasterUser ? (
             <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 pr-4 pl-1 py-1 rounded-full border border-gray-200 dark:border-gray-700 ml-1">
                {farcasterUser.pfpUrl ? (
@@ -135,71 +123,68 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* === CONTENT AREA === */}
-      <div className="flex-grow pt-4 px-4 max-w-lg mx-auto w-full">
-        {activeTab === "create" ? (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-             <div className="flex items-center gap-2 mb-6 justify-center text-gray-800 dark:text-gray-200">
-                <MdBallot className="text-3xl text-blue-600 dark:text-blue-500" />
-                <h2 className="text-2xl font-bold">Create Quest</h2>
-             </div>
-             <CreateQuest onSuccess={() => setActiveTab("feed")} />
-          </div>
-        ) : activeTab === "profile" ? (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-             <MyActivity />
-          </div>
-        ) : (
-          // === TAB FEED ===
-          <div className="flex flex-col gap-6">
-             
-             {/* === BANNER GRADIENT + ANIMASI === */}
-             <motion.div 
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.6, ease: "easeOut" }}
-                className="relative w-full h-40 rounded-3xl overflow-hidden shadow-2xl group bg-gradient-to-r from-blue-600 via-blue-500 to-white dark:to-gray-800"
-             >
-                {/* Dekorasi Background */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -translate-y-10 translate-x-10"></div>
-                
-                {/* Teks dengan Animasi Looping */}
-                <div className="absolute inset-0 flex flex-col justify-center px-6">
-                    <motion.div
-                        animate={{ y: [0, -6, 0] }}
-                        transition={{ 
-                            duration: 4, 
-                            repeat: Infinity, 
-                            ease: "easeInOut" 
-                        }}
-                    >
-                        {/* UPDATE: Icon diganti MdHowToVote (Material Design Vote) */}
-                        <h2 className="text-2xl font-black mb-2 drop-shadow-sm text-white flex items-center gap-2">
-                           Start Voting <MdHowToVote className="text-blue-100 rotate-12" />
-                        </h2>
-                        <p className="text-sm font-bold text-blue-50 max-w-[240px] leading-relaxed drop-shadow-sm">
-                           Decentralized polling on Base. <br/>
-                           Your vote, your voice.
-                        </p>
-                    </motion.div>
+      {/* === CONTENT AREA (Flexible) === */}
+      {/* FIX 2: Area ini mengisi sisa ruang. Scroll hanya aktif jika BUKAN feed. */}
+      <div className="flex-1 relative w-full max-w-lg mx-auto overflow-hidden">
+        <div className={`absolute inset-0 px-4 pt-4 pb-24 ${activeTab === 'profile' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
+            
+            {activeTab === "create" ? (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex items-center gap-2 mb-6 justify-center text-gray-800 dark:text-gray-200">
+                    <MdBallot className="text-3xl text-blue-600 dark:text-blue-500" />
+                    <h2 className="text-2xl font-bold">Create Quest</h2>
                 </div>
-             </motion.div>
-             
-             {/* LIST JUDUL */}
-             <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
-                 <div className="flex items-center gap-2 mb-4 px-1">
-                    <div className="h-6 w-1 bg-blue-600 rounded-full"></div>
-                    <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">Latest Polls</h2>
-                 </div>
-                 <QuestList />
-             </div>
+                <CreateQuest onSuccess={() => setActiveTab("feed")} />
+            </div>
+            ) : activeTab === "profile" ? (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <MyActivity />
+            </div>
+            ) : (
+            // === TAB FEED ===
+            <div className="flex flex-col h-full">
+                {/* Banner - Sedikit dikecilkan tingginya ke h-36 agar muat di HP kecil */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    className="flex-none relative w-full h-36 rounded-3xl overflow-hidden shadow-2xl group bg-gradient-to-r from-blue-600 via-blue-500 to-white dark:to-gray-800 mb-4"
+                >
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -translate-y-10 translate-x-10"></div>
+                    <div className="absolute inset-0 flex flex-col justify-center px-6">
+                        <motion.div
+                            animate={{ y: [0, -6, 0] }}
+                            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                        >
+                            <h2 className="text-2xl font-black mb-2 drop-shadow-sm text-white flex items-center gap-2">
+                            Start Voting <MdHowToVote className="text-blue-100 rotate-12" />
+                            </h2>
+                            <p className="text-sm font-bold text-blue-50 max-w-[240px] leading-relaxed drop-shadow-sm">
+                            Decentralized polling on Base. <br/> Your vote, your voice.
+                            </p>
+                        </motion.div>
+                    </div>
+                </motion.div>
+                
+                {/* List Polls */}
+                <div className="flex-1 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100 flex flex-col">
+                    <div className="flex items-center gap-2 mb-2 px-1 flex-none">
+                        <div className="h-6 w-1 bg-blue-600 rounded-full"></div>
+                        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">Latest Polls</h2>
+                    </div>
+                    {/* Container QuestList akan menyesuaikan sisa tinggi */}
+                    <div className="flex-1 flex items-center justify-center -mt-4">
+                        <QuestList />
+                    </div>
+                </div>
+            </div>
+            )}
 
-          </div>
-        )}
+        </div>
       </div>
 
-      {/* === BOTTOM NAVIGATION === */}
-      <div className="fixed bottom-0 w-full bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex justify-around py-3 z-40 pb-6 max-w-lg mx-auto left-0 right-0 shadow-[0_-4px_15px_-3px_rgba(0,0,0,0.1)]">
+      {/* === BOTTOM NAV (Fixed Bottom) === */}
+      <div className="flex-none w-full bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex justify-around py-3 z-50 pb-6 max-w-lg mx-auto shadow-[0_-4px_15px_-3px_rgba(0,0,0,0.1)]">
         <button onClick={() => setActiveTab("feed")} className={`flex flex-col items-center gap-1 w-1/3 transition-all active:scale-90 ${activeTab === "feed" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-600"}`}>
           <MdHomeFilled className="text-2xl" /><span className="text-[10px] font-bold">FEED</span>
         </button>
