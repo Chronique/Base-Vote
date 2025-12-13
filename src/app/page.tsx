@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import Image from "next/image"; // <--- Import Image Next.js
+// Hapus import Image karena tidak pakai gambar lagi
 import CreateQuest from "~/components/CreateQuest";
 import QuestList from "~/components/QuestList";
 import MyActivity from "~/components/MyActivity"; 
@@ -127,40 +127,37 @@ export default function Home() {
              <MyActivity />
           </div>
         ) : (
-          // === TAB FEED (Disini Banner Berada) ===
+          // === TAB FEED ===
           <div className="flex flex-col gap-6">
              
-             {/* === ANIMATED BANNER SECTION === */}
+             {/* === BANNER GRADIENT + ANIMASI TEKS LOOPING === */}
              <motion.div 
                 initial={{ opacity: 0, y: 20, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                className="relative w-full h-40 rounded-3xl overflow-hidden shadow-2xl group"
+                // Ganti gambar dengan Gradient Biru ke Putih (atau abu-abu gelap di dark mode)
+                className="relative w-full h-40 rounded-3xl overflow-hidden shadow-2xl group bg-gradient-to-r from-blue-600 via-blue-400 to-white dark:to-gray-800"
              >
-                {/* 1. GAMBAR BANNER */}
-                <Image 
-                    src="/banner.png" 
-                    alt="Base Vote Banner"
-                    fill
-                    priority
-                    className="object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-
-                {/* 2. OVERLAY GRADIENT BIAR TEKS KELIATAN */}
-                <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/20 to-transparent" />
-
-                {/* 3. TEKS DI ATAS BANNER */}
-                <div className="absolute bottom-0 left-0 p-6 text-white">
+                {/* Elemen Dekorasi Lingkaran (Opsional, biar gradien lebih cantik) */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -translate-y-10 translate-x-10"></div>
+                
+                {/* Container Teks dengan Animasi LOOPING */}
+                <div className="absolute inset-0 flex flex-col justify-center px-6">
                     <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.3, duration: 0.5 }}
+                        // Animasi Naik Turun Terus Menerus
+                        animate={{ y: [0, -6, 0] }}
+                        transition={{ 
+                            duration: 4,      // Durasi satu putaran
+                            repeat: Infinity, // Ulangi selamanya
+                            ease: "easeInOut" // Gerakan halus
+                        }}
                     >
-                        <h2 className="text-2xl font-black mb-1 drop-shadow-md flex items-center gap-2">
-                           Start Voting <MdRocketLaunch className="text-blue-400" />
+                        <h2 className="text-2xl font-black mb-2 drop-shadow-sm text-white flex items-center gap-2">
+                           Start Voting <MdRocketLaunch className="text-yellow-300 animate-pulse" />
                         </h2>
-                        <p className="text-xs font-medium text-gray-200 opacity-90 max-w-[200px]">
-                           Decentralized polling on Base. Your vote, your voice.
+                        <p className="text-sm font-bold text-blue-50 max-w-[240px] leading-relaxed drop-shadow-sm">
+                           Decentralized polling on Base. <br/>
+                           Your vote, your voice.
                         </p>
                     </motion.div>
                 </div>
