@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, memo } from "react";
-// Ganti useWriteContract dengan useSendCalls (Wagmi Experimental untuk fitur baru Base)
 import { useReadContract, useAccount } from "wagmi"; 
 import { useSendCalls } from "wagmi/experimental"; 
 import { POLL_ABI } from "~/app/constants";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { MdHowToVote, MdArrowBack, MdArrowForward, MdCheckCircle, MdThumbUp, MdTouchApp } from "react-icons/md";
 import { useTheme } from "next-themes"; 
-// Import helper untuk Builder Code
 import { encodeFunctionData } from "viem";
 import { Attribution } from "ox/erc8021";
 
@@ -24,8 +22,6 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
   const [confirmChoice, setConfirmChoice] = useState<number | null>(null);
 
   const { address: userAddress } = useAccount();
-  
-  // === GANTI INI: Pakai useSendCalls ===
   const { sendCalls } = useSendCalls();
 
   const { data: pollData } = useReadContract({
@@ -71,14 +67,12 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
   const handleFinalVote = async () => {
     if (!confirmChoice) return;
 
-    // 1. Encode Data Transaksi Manual
     const encodedData = encodeFunctionData({
         abi: POLL_ABI,
         functionName: "vote",
         args: [confirmChoice]
     });
 
-    // 2. Kirim dengan Builder Code (Capabilities)
     sendCalls({
         calls: [{
             to: address as `0x${string}`,
@@ -86,14 +80,13 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
             value: 0n,
         }],
         capabilities: {
-            // INI BUILDER CODE KAMU 👇
+            // === UPDATE KODE BARU DI SINI ===
             dataSuffix: Attribution.toDataSuffix({
-                codes: ["bc_2ivoo1oy"]
+                codes: ["Bc_9fbxmq2a"] 
             })
         }
     });
 
-    // Animasi Keluar
     await animate(x, 500, { duration: 0.2 });
     onSwipe("right");
     setConfirmChoice(null);
@@ -102,7 +95,6 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
 
   const selectedOptionName = confirmChoice === 1 ? opt1 : opt2;
 
-  // ... (Sisa Render JSX sama persis seperti sebelumnya)
   return (
     <motion.div
       style={{ x, rotate, opacity, scale, y, backgroundColor: activeBg }}
@@ -125,9 +117,6 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         }
       }}
     >
-      {/* ... (Konten Layer Menu & Konfirmasi sama persis) ... */}
-      
-      {/* LAYER 1: MENU PILIH OPSI */}
       {showSelection && !confirmChoice && (
         <div className="absolute inset-0 z-40 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in-95 duration-200">
              <div className="mb-4 text-blue-600 dark:text-blue-400"><MdTouchApp className="text-4xl" /></div>
@@ -140,7 +129,6 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         </div>
       )}
 
-      {/* LAYER 2: KONFIRMASI */}
       {confirmChoice && (
         <div className="absolute inset-0 z-50 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6 animate-in slide-in-from-right-10 duration-200">
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4 text-green-600 dark:text-green-400"><MdThumbUp className="text-3xl" /></div>

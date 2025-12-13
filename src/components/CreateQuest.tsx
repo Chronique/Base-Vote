@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-// Ganti ke useSendCalls
 import { useSendCalls } from "wagmi/experimental";
 import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants";
 import { MdAddCircle, MdOutlinePoll } from "react-icons/md";
@@ -13,34 +12,31 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
   const [opt1, setOpt1] = useState("");
   const [opt2, setOpt2] = useState("");
   
-  // Ganti useWriteContract -> useSendCalls
   const { sendCalls, status } = useSendCalls(); 
   const isPending = status === 'pending';
 
   const handleCreate = () => {
     if (!question || !opt1 || !opt2) return;
 
-    // 1. Encode Function
     const encodedData = encodeFunctionData({
         abi: FACTORY_ABI,
         functionName: "createPoll",
-        args: [question, opt1, opt2, 86400n] // Durasi 1 hari (contoh)
+        args: [question, opt1, opt2, 86400n] 
     });
 
-    // 2. Kirim dengan Builder Code
     sendCalls({
         calls: [{
             to: FACTORY_ADDRESS as `0x${string}`,
             data: encodedData,
         }],
         capabilities: {
+            // === UPDATE KODE BARU DI SINI ===
             dataSuffix: Attribution.toDataSuffix({
-                codes: ["bc_2ivoo1oy"] // CODE KAMU
+                codes: ["Bc_9fbxmq2a"] 
             })
         }
     }, {
         onSuccess: () => {
-            // Reset form & pindah tab setelah request dikirim (optimistic)
             setQuestion("");
             setOpt1("");
             setOpt2("");
@@ -53,7 +49,6 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-3xl shadow-lg">
       <div className="flex flex-col gap-4">
-        {/* Form Inputs ... (sama seperti sebelumnya) ... */}
         <div>
             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Question</label>
             <input 
