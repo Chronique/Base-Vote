@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useSendCalls, useCapabilities } from "wagmi/experimental";
-import { useWriteContract, useAccount } from "wagmi";
-import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants"; // Pastikan ini alamat 0xdbe...
+import { useState } from "react";
+// Hapus useCapabilities karena kita balik ke cara simpel
+import { useSendCalls } from "wagmi/experimental";
+import { useWriteContract } from "wagmi";
+import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants";
 import { MdAddCircle } from "react-icons/md";
 import { encodeFunctionData } from "viem";
 import { Attribution } from "ox/erc8021";
@@ -15,14 +16,6 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { address: userAddress, chain } = useAccount();
-  const chainId = chain?.id || 8453;
-
-  // 1. DETEKSI KAPABILITAS
-  const { data: availableCapabilities } = useCapabilities({
-    account: userAddress,
-  });
-
   const { sendCallsAsync } = useSendCalls(); 
   const { writeContractAsync } = useWriteContract();
 
@@ -31,50 +24,39 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
     setIsSubmitting(true);
 
     try {
-        console.log("🚀 Creating Poll...");
+        console.log("🚀 Creating Poll (Standard Mode)...");
 
-        // Encode Data
         const encodedData = encodeFunctionData({
             abi: FACTORY_ABI,
             functionName: "createPoll",
             args: [question, opt1, opt2, 86400n] 
         });
 
-        // CEK APAKAH PAYMASTER SUPPORTED (Manual Check)
-        const capabilitiesForChain = availableCapabilities?.[chainId];
-        const isPaymasterSupported = capabilitiesForChain?.["paymasterService"]?.supported;
-        const hasPaymasterUrl = !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
-
-        // JIKA SUPPORT PAYMASTER -> PAKAI useSendCalls
-        if (isPaymasterSupported && hasPaymasterUrl) {
-            console.log("💳 Menggunakan Paymaster (Gasless)...");
-            await sendCallsAsync({
+        // 1. COBA PAKAI useSendCalls (Builder Code Only)
+        // Tanpa Paymaster URL -> Gas normal (murah)
+        try {
+             await sendCallsAsync({
                 calls: [{
                     to: FACTORY_ADDRESS as `0x${string}`,
                     data: encodedData,
                 }],
                 capabilities: {
-                    paymasterService: {
-                        url: process.env.NEXT_PUBLIC_PAYMASTER_URL as string
-                    },
+                    // HANYA Builder Code (Supaya kamu tetap dapat reward)
                     dataSuffix: Attribution.toDataSuffix({
-                        codes: ["Bc_9fbxmq2a"]
+                        codes: ["Bc_9fbxmq2a"] // Pastikan kode ini benar
                     })
                 }
             });
-        } 
-        // JIKA TIDAK SUPPORT ATAU DI FARCASTER -> LANGSUNG FALLBACK
-        else {
-            console.log("⚠️ Paymaster tidak terdeteksi/Farcaster Env. Menggunakan writeContract biasa...");
-            
-            // Kita coba pakai writeContractAsync langsung
-            // Ini lebih aman buat Farcaster yang sering error kalau dipaksa capabilities
-            await writeContractAsync({
+        } catch (sendCallsError) {
+             console.warn("⚠️ useSendCalls failed, fallback to writeContract...", sendCallsError);
+             
+             // 2. FALLBACK (Jika wallet user tidak support fitur canggih sama sekali)
+             await writeContractAsync({
                 address: FACTORY_ADDRESS as `0x${string}`,
                 abi: FACTORY_ABI,
                 functionName: "createPoll",
                 args: [question, opt1, opt2, 86400n]
-            });
+             });
         }
 
         alert("Transaction submitted! 🚀");
@@ -83,27 +65,12 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
         setOpt2("");
         onSuccess();
 
-    } catch (error: any) {
-        console.error("❌ Failed to create poll:", error);
-        
-        // Jaga-jaga kalau error di blok IF pertama, kita coba fallback terakhir
-        if (!error.message?.includes("User rejected")) {
-             try {
-                console.log("🔄 Mencoba paksa fallback terakhir...");
-                await writeContractAsync({
-                    address: FACTORY_ADDRESS as `0x${string}`,
-                    abi: FACTORY_ABI,
-                    functionName: "createPoll",
-                    args: [question, opt1, opt2, 86400n]
-                });
-                alert("Transaction submitted (Fallback)! 🚀");
-                setQuestion("");
-                setOpt1("");
-                setOpt2("");
-                onSuccess();
-             } catch (fallbackError) {
-                alert("Gagal membuat poll. Pastikan saldo ETH cukup.");
-             }
+    } catch (finalError) {
+        console.error("❌ Failed to create poll:", finalError);
+        // Jangan alert jika user cuma reject di wallet
+        // @ts-ignore
+        if (!finalError.message?.includes("User rejected")) {
+            alert("Failed to create poll. Check console.");
         }
     } finally {
         setIsSubmitting(false); 
