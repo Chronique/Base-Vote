@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, memo, useMemo } from "react";
-// PENTING: Import useCapabilities untuk cek fitur Paymaster
+import { useState, memo } from "react";
+// HAPUS useCapabilities karena kita tidak perlu cek paymaster lagi di sini
 import { useReadContract, useAccount, useWriteContract } from "wagmi"; 
-import { useSendCalls, useCapabilities } from "wagmi/experimental"; 
+import { useSendCalls } from "wagmi/experimental"; 
 import { POLL_ABI } from "~/app/constants";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { MdHowToVote, MdArrowBack, MdArrowForward, MdCheckCircle, MdThumbUp, MdTouchApp } from "react-icons/md";
@@ -23,49 +23,13 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
   const [confirmChoice, setConfirmChoice] = useState<number | null>(null);
   const [isVotingLoading, setIsVotingLoading] = useState(false);
 
-  // Ambil data akun & chain
-  const { address: userAddress, chain } = useAccount();
-  
-  // 1. CEK KAPABILITAS WALLET (Apakah support Paymaster?)
-  const { data: availableCapabilities } = useCapabilities({
-    account: userAddress,
-  });
+  const { address: userAddress } = useAccount();
 
   const { sendCallsAsync } = useSendCalls();         
   const { writeContractAsync } = useWriteContract(); 
 
-  // 2. LOGIKA PENENTUAN PAYMASTER (Auto-Detect)
-  // Ini bagian yang KURANG di kode lamamu
-  const capabilities = useMemo(() => {
-    if (!availableCapabilities || !chain) return {};
-
-    const capabilitiesForChain = availableCapabilities[chain.id];
-    
-    // Cek apakah wallet support Paymaster Service & URL Paymaster ada di .env
-    if (
-      capabilitiesForChain?.["paymasterService"] &&
-      process.env.NEXT_PUBLIC_PAYMASTER_URL
-    ) {
-      console.log("⛽ Gas Vote disponsori oleh Paymaster!");
-      return {
-        paymasterService: {
-          url: process.env.NEXT_PUBLIC_PAYMASTER_URL,
-        },
-        // Builder Code Tetap Ada
-        dataSuffix: Attribution.toDataSuffix({
-            codes: ["bc_2ivoo1oy"] 
-        })
-      };
-    }
-
-    // Kalau tidak support Paymaster, kirim Builder Code saja
-    console.log("⛽ User bayar gas sendiri (Vote)");
-    return {
-        dataSuffix: Attribution.toDataSuffix({
-            codes: ["bc_2ivoo1oy"]
-        })
-    };
-  }, [availableCapabilities, chain]);
+  // === HAPUS LOGIKA PAYMASTER DI SINI ===
+  // Kita balik ke simpel: Cuma kirim Builder Code.
 
   const { data: pollData } = useReadContract({
     address: address as `0x${string}`,
@@ -111,7 +75,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
     };
 
     try {
-        console.log("🗳️ Attempting Vote (Smart Wallet Check)...");
+        console.log("🗳️ Vote (Standard Base App / EOA)...");
         
         const encodedData = encodeFunctionData({
             abi: POLL_ABI,
@@ -119,13 +83,19 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
             args: [confirmChoice]
         });
 
-        // METHOD 1: useSendCalls (Paymaster + Builder Reward)
+        // METHOD 1: useSendCalls (Cuma Builder Code)
+        // Jika Base App mau bayarin, dia akan bayarin otomatis.
+        // Jika tidak, user bayar sendiri.
         await sendCallsAsync({
             calls: [{
                 to: address as `0x${string}`,
                 data: encodedData,
             }],
-            capabilities: capabilities // <--- PENTING: Gunakan capabilities hasil hitungan di atas
+            capabilities: {
+                dataSuffix: Attribution.toDataSuffix({
+                    codes: ["bc_2ivoo1oy"] // Builder Code Only
+                })
+            }
         });
         
         await onSuccessUI();
@@ -134,7 +104,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         console.warn("⚠️ useSendCalls failed, attempting fallback...", error);
         
         try {
-            // METHOD 2: FALLBACK (Standard writeContract - User Bayar Gas)
+            // METHOD 2: FALLBACK (Standard writeContract)
             await writeContractAsync({
                 address: address as `0x${string}`,
                 abi: POLL_ABI,
@@ -155,6 +125,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
 
   const selectedOptionName = confirmChoice === 1 ? opt1 : opt2;
 
+  // ... (Return JSX sama persis, copy paste saja bagian return-nya) ...
   return (
     <motion.div
       style={{ x, rotate, opacity, scale, y, backgroundColor: activeBg }}
@@ -177,7 +148,6 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         }
       }}
     >
-      {/* SELECTION MENU */}
       {showSelection && !confirmChoice && (
         <div className="absolute inset-0 z-40 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in-95 duration-200">
              <div className="mb-4 text-blue-600 dark:text-blue-400"><MdTouchApp className="text-4xl" /></div>
@@ -190,7 +160,6 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         </div>
       )}
 
-      {/* CONFIRMATION LAYER */}
       {confirmChoice && (
         <div className="absolute inset-0 z-50 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6 animate-in slide-in-from-right-10 duration-200">
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4 text-green-600 dark:text-green-400"><MdThumbUp className="text-3xl" /></div>
@@ -214,7 +183,6 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         </div>
       )}
 
-      {/* MAIN CARD CONTENT */}
       <div className={`mb-4 p-4 rounded-full ${userHasVoted ? 'bg-green-100 text-green-600' : 'bg-gray-50 dark:bg-gray-800 text-blue-500'}`}>
         {userHasVoted ? <MdCheckCircle className="text-4xl" /> : <MdHowToVote className="text-4xl" />}
       </div>
