@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, memo } from "react";
-// HAPUS useCapabilities karena kita tidak perlu cek paymaster lagi di sini
+// HAPUS useCapabilities (Balik ke import standar)
 import { useReadContract, useAccount, useWriteContract } from "wagmi"; 
 import { useSendCalls } from "wagmi/experimental"; 
 import { POLL_ABI } from "~/app/constants";
@@ -25,11 +25,9 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
 
   const { address: userAddress } = useAccount();
 
+  // 1. WAGMI HOOKS
   const { sendCallsAsync } = useSendCalls();         
   const { writeContractAsync } = useWriteContract(); 
-
-  // === HAPUS LOGIKA PAYMASTER DI SINI ===
-  // Kita balik ke simpel: Cuma kirim Builder Code.
 
   const { data: pollData } = useReadContract({
     address: address as `0x${string}`,
@@ -75,7 +73,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
     };
 
     try {
-        console.log("🗳️ Vote (Standard Base App / EOA)...");
+        console.log("🗳️ Vote (Mode: Standard/BuilderCode)...");
         
         const encodedData = encodeFunctionData({
             abi: POLL_ABI,
@@ -83,9 +81,8 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
             args: [confirmChoice]
         });
 
-        // METHOD 1: useSendCalls (Cuma Builder Code)
-        // Jika Base App mau bayarin, dia akan bayarin otomatis.
-        // Jika tidak, user bayar sendiri.
+        // METHOD 1: useSendCalls (Builder Code Only)
+        // Tanpa Paymaster -> Base App biasanya tetap mensponsori vote ini secara native
         await sendCallsAsync({
             calls: [{
                 to: address as `0x${string}`,
@@ -93,7 +90,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
             }],
             capabilities: {
                 dataSuffix: Attribution.toDataSuffix({
-                    codes: ["bc_2ivoo1oy"] // Builder Code Only
+                    codes: ["bc_2ivoo1oy"] // Builder Code Tetap Jalan
                 })
             }
         });
@@ -101,17 +98,16 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         await onSuccessUI();
 
     } catch (error) {
-        console.warn("⚠️ useSendCalls failed, attempting fallback...", error);
+        console.warn("⚠️ useSendCalls failed, fallback to writeContract...", error);
         
         try {
-            // METHOD 2: FALLBACK (Standard writeContract)
+            // METHOD 2: FALLBACK (Standard EOA)
             await writeContractAsync({
                 address: address as `0x${string}`,
                 abi: POLL_ABI,
                 functionName: "vote",
                 args: [confirmChoice],
             });
-            
             await onSuccessUI();
         } catch (finalError: any) {
             console.error("❌ Total Failure:", finalError);
@@ -125,7 +121,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
 
   const selectedOptionName = confirmChoice === 1 ? opt1 : opt2;
 
-  // ... (Return JSX sama persis, copy paste saja bagian return-nya) ...
+  // ... (Return JSX sama persis seperti sebelumnya) ...
   return (
     <motion.div
       style={{ x, rotate, opacity, scale, y, backgroundColor: activeBg }}
