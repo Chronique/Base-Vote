@@ -3,8 +3,8 @@
 import { useState, useMemo } from "react";
 import { useSendCalls, useCapabilities } from "wagmi/experimental";
 import { useWriteContract, useAccount } from "wagmi";
-import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants"; // Pastikan ini alamat 0xdbe...
-import { MdAddCircle } from "react-icons/md";
+import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants";
+import { MdAddCircle, MdCheckCircle, MdBolt } from "react-icons/md";
 import { encodeFunctionData } from "viem";
 import { Attribution } from "ox/erc8021";
 
@@ -14,11 +14,13 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
   const [opt2, setOpt2] = useState("");
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // STATE: Toggle Gasless (Default True)
+  const [usePaymaster, setUsePaymaster] = useState(true);
 
   const { address: userAddress, chain } = useAccount();
-  const chainId = chain?.id || 8453;
 
-  // 1. DETEKSI KAPABILITAS
+  // 1. DETEKSI KAPABILITAS WALLET
   const { data: availableCapabilities } = useCapabilities({
     account: userAddress,
   });
@@ -26,84 +28,75 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
   const { sendCallsAsync } = useSendCalls(); 
   const { writeContractAsync } = useWriteContract();
 
+  // 2. LOGIKA: Apakah Wallet ini Support Paymaster?
+  const canUsePaymaster = useMemo(() => {
+    if (!availableCapabilities || !chain) return false;
+    const capabilitiesForChain = availableCapabilities[chain.id];
+    return !!capabilitiesForChain?.["paymasterService"]?.supported && !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
+  }, [availableCapabilities, chain]);
+
+  // 3. KONFIGURASI CAPABILITIES (Paymaster / Builder Code)
+  const capabilities = useMemo(() => {
+    // Jika Toggle OFF atau Wallet Gak Support -> Cuma Builder Code
+    if (!usePaymaster || !canUsePaymaster) {
+        return {
+            dataSuffix: Attribution.toDataSuffix({ codes: ["bc_2ivoo1oy"] })
+        };
+    }
+
+    // Jika Toggle ON dan Support -> Pakai Paymaster
+    return {
+      paymasterService: { url: process.env.NEXT_PUBLIC_PAYMASTER_URL },
+      dataSuffix: Attribution.toDataSuffix({ codes: ["bc_2ivoo1oy"] })
+    };
+  }, [canUsePaymaster, usePaymaster]);
+
   const handleCreate = async () => {
     if (!question || !opt1 || !opt2) return;
     setIsSubmitting(true);
 
     try {
-        console.log("🚀 Creating Poll...");
+        const usingGasless = canUsePaymaster && usePaymaster;
+        console.log(`🚀 Creating Poll (Gasless: ${usingGasless})...`);
 
-        // Encode Data
         const encodedData = encodeFunctionData({
             abi: FACTORY_ABI,
             functionName: "createPoll",
             args: [question, opt1, opt2, 86400n] 
         });
 
-        // CEK APAKAH PAYMASTER SUPPORTED (Manual Check)
-        const capabilitiesForChain = availableCapabilities?.[chainId];
-        const isPaymasterSupported = capabilitiesForChain?.["paymasterService"]?.supported;
-        const hasPaymasterUrl = !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
-
-        // JIKA SUPPORT PAYMASTER -> PAKAI useSendCalls
-        if (isPaymasterSupported && hasPaymasterUrl) {
-            console.log("💳 Menggunakan Paymaster (Gasless)...");
-            await sendCallsAsync({
+        // METHOD 1: Try useSendCalls (Smart Wallet)
+        try {
+             await sendCallsAsync({
                 calls: [{
                     to: FACTORY_ADDRESS as `0x${string}`,
                     data: encodedData,
                 }],
-                capabilities: {
-                    paymasterService: {
-                        url: process.env.NEXT_PUBLIC_PAYMASTER_URL as string
-                    },
-                    dataSuffix: Attribution.toDataSuffix({
-                        codes: ["Bc_9fbxmq2a"]
-                    })
-                }
+                capabilities: capabilities
             });
-        } 
-        // JIKA TIDAK SUPPORT ATAU DI FARCASTER -> LANGSUNG FALLBACK
-        else {
-            console.log("⚠️ Paymaster tidak terdeteksi/Farcaster Env. Menggunakan writeContract biasa...");
-            
-            // Kita coba pakai writeContractAsync langsung
-            // Ini lebih aman buat Farcaster yang sering error kalau dipaksa capabilities
-            await writeContractAsync({
+        } catch (sendCallsError) {
+             console.warn("⚠️ useSendCalls failed, fallback to writeContract...", sendCallsError);
+             
+             // METHOD 2: Fallback (EOA / Farcaster)
+             await writeContractAsync({
                 address: FACTORY_ADDRESS as `0x${string}`,
                 abi: FACTORY_ABI,
                 functionName: "createPoll",
                 args: [question, opt1, opt2, 86400n]
-            });
+             });
         }
 
-        alert("Transaction submitted! 🚀");
+        alert("Poll created successfully! 🚀");
         setQuestion("");
         setOpt1("");
         setOpt2("");
         onSuccess();
 
-    } catch (error: any) {
-        console.error("❌ Failed to create poll:", error);
-        
-        // Jaga-jaga kalau error di blok IF pertama, kita coba fallback terakhir
-        if (!error.message?.includes("User rejected")) {
-             try {
-                console.log("🔄 Mencoba paksa fallback terakhir...");
-                await writeContractAsync({
-                    address: FACTORY_ADDRESS as `0x${string}`,
-                    abi: FACTORY_ABI,
-                    functionName: "createPoll",
-                    args: [question, opt1, opt2, 86400n]
-                });
-                alert("Transaction submitted (Fallback)! 🚀");
-                setQuestion("");
-                setOpt1("");
-                setOpt2("");
-                onSuccess();
-             } catch (fallbackError) {
-                alert("Gagal membuat poll. Pastikan saldo ETH cukup.");
-             }
+    } catch (finalError) {
+        console.error("❌ Failed to create poll:", finalError);
+        // @ts-ignore
+        if (!finalError.message?.includes("User rejected")) {
+             alert("Failed to create poll. Check console.");
         }
     } finally {
         setIsSubmitting(false); 
@@ -143,6 +136,23 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
                 />
             </div>
         </div>
+
+        {/* SMART TOGGLE: Hanya muncul jika Wallet Support Paymaster */}
+        {canUsePaymaster && (
+            <div className="flex justify-center mt-2">
+                <div 
+                    className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-full cursor-pointer transition-all active:scale-95" 
+                    onClick={() => setUsePaymaster(!usePaymaster)}
+                >
+                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${usePaymaster ? 'bg-blue-600 border-blue-600' : 'bg-transparent border-gray-400'}`}>
+                        {usePaymaster && <MdCheckCircle className="text-white text-sm" />}
+                    </div>
+                    <span className="text-xs font-bold text-blue-600 dark:text-blue-300 flex items-center gap-1">
+                       {usePaymaster ? "Gas Sponsored (Free)" : "I'll Pay Gas"} <MdBolt />
+                    </span>
+                </div>
+            </div>
+        )}
 
         <button 
             onClick={handleCreate}
