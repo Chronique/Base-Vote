@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, memo, useMemo } from "react";
-// Tambahkan useCapabilities di sini
+// PENTING: Import useCapabilities untuk cek fitur Paymaster
 import { useReadContract, useAccount, useWriteContract } from "wagmi"; 
 import { useSendCalls, useCapabilities } from "wagmi/experimental"; 
 import { POLL_ABI } from "~/app/constants";
@@ -23,9 +23,10 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
   const [confirmChoice, setConfirmChoice] = useState<number | null>(null);
   const [isVotingLoading, setIsVotingLoading] = useState(false);
 
+  // Ambil data akun & chain
   const { address: userAddress, chain } = useAccount();
   
-  // 1. DETEKSI KAPABILITAS WALLET
+  // 1. CEK KAPABILITAS WALLET (Apakah support Paymaster?)
   const { data: availableCapabilities } = useCapabilities({
     account: userAddress,
   });
@@ -34,31 +35,34 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
   const { writeContractAsync } = useWriteContract(); 
 
   // 2. LOGIKA PENENTUAN PAYMASTER (Auto-Detect)
+  // Ini bagian yang KURANG di kode lamamu
   const capabilities = useMemo(() => {
     if (!availableCapabilities || !chain) return {};
 
     const capabilitiesForChain = availableCapabilities[chain.id];
     
-    // Cek apakah wallet support Paymaster Service
+    // Cek apakah wallet support Paymaster Service & URL Paymaster ada di .env
     if (
-      capabilitiesForChain["paymasterService"] &&
+      capabilitiesForChain?.["paymasterService"] &&
       process.env.NEXT_PUBLIC_PAYMASTER_URL
     ) {
+      console.log("⛽ Gas Vote disponsori oleh Paymaster!");
       return {
         paymasterService: {
           url: process.env.NEXT_PUBLIC_PAYMASTER_URL,
         },
-        // Jangan lupa Builder Code tetap dipasang
+        // Builder Code Tetap Ada
         dataSuffix: Attribution.toDataSuffix({
-            codes: ["Bc_9fbxmq2a"] // Pastikan ini kode yang benar
+            codes: ["bc_2ivoo1oy"] 
         })
       };
     }
 
     // Kalau tidak support Paymaster, kirim Builder Code saja
+    console.log("⛽ User bayar gas sendiri (Vote)");
     return {
         dataSuffix: Attribution.toDataSuffix({
-            codes: ["Bc_9fbxmq2a"]
+            codes: ["bc_2ivoo1oy"]
         })
     };
   }, [availableCapabilities, chain]);
@@ -121,7 +125,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
                 to: address as `0x${string}`,
                 data: encodedData,
             }],
-            capabilities: capabilities // Gunakan capabilities yang sudah dihitung di atas
+            capabilities: capabilities // <--- PENTING: Gunakan capabilities hasil hitungan di atas
         });
         
         await onSuccessUI();
@@ -173,6 +177,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         }
       }}
     >
+      {/* SELECTION MENU */}
       {showSelection && !confirmChoice && (
         <div className="absolute inset-0 z-40 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in-95 duration-200">
              <div className="mb-4 text-blue-600 dark:text-blue-400"><MdTouchApp className="text-4xl" /></div>
@@ -185,6 +190,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         </div>
       )}
 
+      {/* CONFIRMATION LAYER */}
       {confirmChoice && (
         <div className="absolute inset-0 z-50 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6 animate-in slide-in-from-right-10 duration-200">
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4 text-green-600 dark:text-green-400"><MdThumbUp className="text-3xl" /></div>
@@ -208,6 +214,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         </div>
       )}
 
+      {/* MAIN CARD CONTENT */}
       <div className={`mb-4 p-4 rounded-full ${userHasVoted ? 'bg-green-100 text-green-600' : 'bg-gray-50 dark:bg-gray-800 text-blue-500'}`}>
         {userHasVoted ? <MdCheckCircle className="text-4xl" /> : <MdHowToVote className="text-4xl" />}
       </div>
