@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useSendCalls } from "wagmi/experimental";
-import { useWriteContract } from "wagmi";
+import { useState, useMemo } from "react";
+// Tambahkan useCapabilities
+import { useSendCalls, useCapabilities } from "wagmi/experimental";
+import { useWriteContract, useAccount } from "wagmi";
 import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants";
 import { MdAddCircle } from "react-icons/md";
 import { encodeFunctionData } from "viem";
@@ -15,8 +16,43 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const { address: userAddress, chain } = useAccount();
+
+  // 1. DETEKSI KAPABILITAS WALLET
+  const { data: availableCapabilities } = useCapabilities({
+    account: userAddress,
+  });
+
   const { sendCallsAsync } = useSendCalls(); 
   const { writeContractAsync } = useWriteContract();
+
+  // 2. LOGIKA PENENTUAN PAYMASTER (Auto-Detect)
+  const capabilities = useMemo(() => {
+    if (!availableCapabilities || !chain) return {};
+
+    const capabilitiesForChain = availableCapabilities[chain.id];
+    
+    // Cek Paymaster Support
+    if (
+      capabilitiesForChain["paymasterService"] &&
+      process.env.NEXT_PUBLIC_PAYMASTER_URL
+    ) {
+      return {
+        paymasterService: {
+          url: process.env.NEXT_PUBLIC_PAYMASTER_URL,
+        },
+        dataSuffix: Attribution.toDataSuffix({
+            codes: ["Bc_9fbxmq2a"]
+        })
+      };
+    }
+
+    return {
+        dataSuffix: Attribution.toDataSuffix({
+            codes: ["Bc_9fbxmq2a"]
+        })
+    };
+  }, [availableCapabilities, chain]);
 
   const handleCreate = async () => {
     if (!question || !opt1 || !opt2) return;
@@ -31,23 +67,19 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
             args: [question, opt1, opt2, 86400n] 
         });
 
-        // 1. TRY BUILDER CODE (useSendCalls)
+        // METHOD 1: Try Paymaster / Builder Code
         try {
              await sendCallsAsync({
                 calls: [{
                     to: FACTORY_ADDRESS as `0x${string}`,
                     data: encodedData,
                 }],
-                capabilities: {
-                    dataSuffix: Attribution.toDataSuffix({
-                        codes: ["bc_2ivoo1oy"] 
-                    })
-                }
+                capabilities: capabilities // HYBRID CAPABILITIES
             });
         } catch (sendCallsError) {
-             console.warn("⚠️ useSendCalls failed (likely Farcaster), fallback to writeContract...", sendCallsError);
+             console.warn("⚠️ Fallback to writeContract...", sendCallsError);
              
-             // 2. FALLBACK (writeContract)
+             // METHOD 2: Fallback Standard
              await writeContractAsync({
                 address: FACTORY_ADDRESS as `0x${string}`,
                 abi: FACTORY_ABI,
@@ -64,8 +96,7 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
 
     } catch (finalError) {
         console.error("❌ Failed to create poll:", finalError);
-        // ALERT BAHASA INGGRIS
-        alert("Failed to create poll. Check console.");
+        alert("Failed to create poll.");
     } finally {
         setIsSubmitting(false); 
     }

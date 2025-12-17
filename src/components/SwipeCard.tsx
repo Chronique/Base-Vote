@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, memo } from "react";
+import { useState, memo, useMemo } from "react";
+// Tambahkan useCapabilities di sini
 import { useReadContract, useAccount, useWriteContract } from "wagmi"; 
-import { useSendCalls } from "wagmi/experimental"; 
+import { useSendCalls, useCapabilities } from "wagmi/experimental"; 
 import { POLL_ABI } from "~/app/constants";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { MdHowToVote, MdArrowBack, MdArrowForward, MdCheckCircle, MdThumbUp, MdTouchApp } from "react-icons/md";
@@ -20,13 +21,47 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
   const { resolvedTheme } = useTheme();
   const [showSelection, setShowSelection] = useState(false);
   const [confirmChoice, setConfirmChoice] = useState<number | null>(null);
-  
   const [isVotingLoading, setIsVotingLoading] = useState(false);
 
-  const { address: userAddress } = useAccount();
+  const { address: userAddress, chain } = useAccount();
+  
+  // 1. DETEKSI KAPABILITAS WALLET
+  const { data: availableCapabilities } = useCapabilities({
+    account: userAddress,
+  });
 
   const { sendCallsAsync } = useSendCalls();         
   const { writeContractAsync } = useWriteContract(); 
+
+  // 2. LOGIKA PENENTUAN PAYMASTER (Auto-Detect)
+  const capabilities = useMemo(() => {
+    if (!availableCapabilities || !chain) return {};
+
+    const capabilitiesForChain = availableCapabilities[chain.id];
+    
+    // Cek apakah wallet support Paymaster Service
+    if (
+      capabilitiesForChain["paymasterService"] &&
+      process.env.NEXT_PUBLIC_PAYMASTER_URL
+    ) {
+      return {
+        paymasterService: {
+          url: process.env.NEXT_PUBLIC_PAYMASTER_URL,
+        },
+        // Jangan lupa Builder Code tetap dipasang
+        dataSuffix: Attribution.toDataSuffix({
+            codes: ["Bc_9fbxmq2a"] // Pastikan ini kode yang benar
+        })
+      };
+    }
+
+    // Kalau tidak support Paymaster, kirim Builder Code saja
+    return {
+        dataSuffix: Attribution.toDataSuffix({
+            codes: ["Bc_9fbxmq2a"]
+        })
+    };
+  }, [availableCapabilities, chain]);
 
   const { data: pollData } = useReadContract({
     address: address as `0x${string}`,
@@ -72,7 +107,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
     };
 
     try {
-        console.log("🗳️ Attempting Vote with Builder Code (useSendCalls)...");
+        console.log("🗳️ Attempting Vote (Smart Wallet Check)...");
         
         const encodedData = encodeFunctionData({
             abi: POLL_ABI,
@@ -80,26 +115,22 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
             args: [confirmChoice]
         });
 
-        // METHOD 1: useSendCalls (Builder Reward)
+        // METHOD 1: useSendCalls (Paymaster + Builder Reward)
         await sendCallsAsync({
             calls: [{
                 to: address as `0x${string}`,
                 data: encodedData,
             }],
-            capabilities: {
-                dataSuffix: Attribution.toDataSuffix({
-                    codes: ["bc_2ivoo1oy"] 
-                })
-            }
+            capabilities: capabilities // Gunakan capabilities yang sudah dihitung di atas
         });
         
         await onSuccessUI();
 
     } catch (error) {
-        console.warn("⚠️ useSendCalls failed, attempting fallback to writeContract...", error);
+        console.warn("⚠️ useSendCalls failed, attempting fallback...", error);
         
         try {
-            // METHOD 2: FALLBACK (Standard writeContract)
+            // METHOD 2: FALLBACK (Standard writeContract - User Bayar Gas)
             await writeContractAsync({
                 address: address as `0x${string}`,
                 abi: POLL_ABI,
@@ -111,8 +142,9 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         } catch (finalError: any) {
             console.error("❌ Total Failure:", finalError);
             setIsVotingLoading(false); 
-            // ALERT BAHASA INGGRIS
-            alert("Vote Failed. Please check your connection or ETH balance.");
+            if (!finalError.message.includes("User rejected")) {
+                alert("Vote Failed. Check connection.");
+            }
         }
     }
   };
@@ -141,7 +173,6 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         }
       }}
     >
-      {/* SELECTION MENU */}
       {showSelection && !confirmChoice && (
         <div className="absolute inset-0 z-40 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in-95 duration-200">
              <div className="mb-4 text-blue-600 dark:text-blue-400"><MdTouchApp className="text-4xl" /></div>
@@ -154,7 +185,6 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         </div>
       )}
 
-      {/* CONFIRMATION LAYER */}
       {confirmChoice && (
         <div className="absolute inset-0 z-50 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6 animate-in slide-in-from-right-10 duration-200">
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4 text-green-600 dark:text-green-400"><MdThumbUp className="text-3xl" /></div>
@@ -165,7 +195,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
                     disabled={isVotingLoading}
                     className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2"
                 >
-                    {isVotingLoading ? "Sign in Wallet..." : <>Sign & Vote <MdCheckCircle /></>}
+                    {isVotingLoading ? "Confirming..." : <>Sign & Vote <MdCheckCircle /></>}
                 </button>
                 <button 
                     onClick={() => setConfirmChoice(null)} 
@@ -178,7 +208,6 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         </div>
       )}
 
-      {/* MAIN CARD CONTENT */}
       <div className={`mb-4 p-4 rounded-full ${userHasVoted ? 'bg-green-100 text-green-600' : 'bg-gray-50 dark:bg-gray-800 text-blue-500'}`}>
         {userHasVoted ? <MdCheckCircle className="text-4xl" /> : <MdHowToVote className="text-4xl" />}
       </div>
