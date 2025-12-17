@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, memo } from "react";
-// HAPUS useCapabilities karena kita balik ke mode standar (hemat)
+import { useState, memo, useMemo } from "react";
 import { useReadContract, useAccount, useWriteContract } from "wagmi"; 
-import { useSendCalls } from "wagmi/experimental"; 
+import { useSendCalls, useCapabilities } from "wagmi/experimental"; 
 import { POLL_ABI } from "~/app/constants";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
-import { MdHowToVote, MdArrowBack, MdArrowForward, MdCheckCircle, MdThumbUp, MdTouchApp } from "react-icons/md";
+import { MdHowToVote, MdArrowBack, MdArrowForward, MdCheckCircle, MdThumbUp, MdTouchApp, MdBolt } from "react-icons/md";
 import { useTheme } from "next-themes"; 
 import { encodeFunctionData } from "viem";
 import { Attribution } from "ox/erc8021";
@@ -22,14 +21,38 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
   const [showSelection, setShowSelection] = useState(false);
   const [confirmChoice, setConfirmChoice] = useState<number | null>(null);
   const [isVotingLoading, setIsVotingLoading] = useState(false);
-
-  // Tidak perlu state toggle lagi
-
-  const { address: userAddress } = useAccount();
   
-  // Hook Wagmi
+  // State Toggle Gasless
+  const [usePaymaster, setUsePaymaster] = useState(true);
+
+  const { address: userAddress, chain } = useAccount();
+  const { data: availableCapabilities } = useCapabilities({ account: userAddress });
+
   const { sendCallsAsync } = useSendCalls();         
   const { writeContractAsync } = useWriteContract(); 
+
+  // 1. CEK APAKAH WALLET SUPPORT PAYMASTER?
+  const canUsePaymaster = useMemo(() => {
+    if (!availableCapabilities || !chain) return false;
+    const capabilitiesForChain = availableCapabilities[chain.id];
+    return !!capabilitiesForChain?.["paymasterService"]?.supported && !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
+  }, [availableCapabilities, chain]);
+
+  // 2. HITUNG CAPABILITIES UNTUK TRANSAKSI
+  const capabilities = useMemo(() => {
+    // Jika Toggle OFF atau Wallet Gak Support -> Cuma Builder Code
+    if (!usePaymaster || !canUsePaymaster) {
+        return {
+            dataSuffix: Attribution.toDataSuffix({ codes: ["bc_2ivoo1oy"] })
+        };
+    }
+
+    // Jika Toggle ON dan Support -> Pakai Paymaster
+    return {
+      paymasterService: { url: process.env.NEXT_PUBLIC_PAYMASTER_URL },
+      dataSuffix: Attribution.toDataSuffix({ codes: ["bc_2ivoo1oy"] })
+    };
+  }, [canUsePaymaster, usePaymaster]);
 
   const { data: pollData } = useReadContract({
     address: address as `0x${string}`,
@@ -75,7 +98,9 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
     };
 
     try {
-        console.log("🗳️ Vote Standard (Builder Code Only)...");
+        // Cek log apakah pakai paymaster atau tidak
+        const usingGasless = canUsePaymaster && usePaymaster;
+        console.log(`🗳️ Vote (Gasless: ${usingGasless})...`);
         
         const encodedData = encodeFunctionData({
             abi: POLL_ABI,
@@ -83,26 +108,22 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
             args: [confirmChoice]
         });
 
-        // CARA 1: useSendCalls (Builder Code, Tanpa Paymaster)
+        // METHOD 1: useSendCalls 
         await sendCallsAsync({
             calls: [{
                 to: address as `0x${string}`,
                 data: encodedData,
             }],
-            capabilities: {
-                dataSuffix: Attribution.toDataSuffix({
-                    codes: ["bc_2ivoo1oy"] // KODE BUILDER KAMU
-                })
-            }
+            capabilities: capabilities
         });
         
         await onSuccessUI();
 
     } catch (error) {
-        console.warn("⚠️ Fallback ke writeContract...", error);
+        console.warn("⚠️ Error, mencoba fallback...", error);
         
         try {
-            // CARA 2: FALLBACK (EOA Biasa)
+            // METHOD 2: FALLBACK (Standard Write Contract)
             await writeContractAsync({
                 address: address as `0x${string}`,
                 abi: POLL_ABI,
@@ -161,10 +182,20 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
       {confirmChoice && (
         <div className="absolute inset-0 z-50 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6 animate-in slide-in-from-right-10 duration-200">
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4 text-green-600 dark:text-green-400"><MdThumbUp className="text-3xl" /></div>
-            <p className="text-xl font-black text-gray-900 dark:text-white mb-6 leading-tight px-4 border-l-4 border-blue-500">"{selectedOptionName}"</p>
+            <p className="text-xl font-black text-gray-900 dark:text-white mb-2 leading-tight px-4 border-l-4 border-blue-500">"{selectedOptionName}"</p>
             
-            {/* TOMBOL TOGGLE SUDAH DIHAPUS, BALIK BERSIH */}
-            
+            {/* TOGGLE GASLESS MODE (HANYA MUNCUL JIKA SUPPORT) */}
+            {canUsePaymaster && (
+                <div className="mb-4 flex items-center justify-center gap-2 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-full cursor-pointer animate-in fade-in" onClick={() => setUsePaymaster(!usePaymaster)}>
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${usePaymaster ? 'bg-blue-600 border-blue-600' : 'bg-transparent border-gray-400'}`}>
+                        {usePaymaster && <MdCheckCircle className="text-white text-xs" />}
+                    </div>
+                    <span className="text-xs font-bold text-blue-600 dark:text-blue-300 flex items-center gap-1">
+                    {usePaymaster ? "Gas Sponsored (Free)" : "I'll Pay Gas"} <MdBolt />
+                    </span>
+                </div>
+            )}
+
             <div className="flex flex-col gap-3 w-full">
                 <button 
                     onClick={handleFinalVote} 
@@ -184,6 +215,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         </div>
       )}
 
+      {/* Sisa kode sama... */}
       <div className={`mb-4 p-4 rounded-full ${userHasVoted ? 'bg-green-100 text-green-600' : 'bg-gray-50 dark:bg-gray-800 text-blue-500'}`}>
         {userHasVoted ? <MdCheckCircle className="text-4xl" /> : <MdHowToVote className="text-4xl" />}
       </div>
