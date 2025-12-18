@@ -130,7 +130,7 @@ export default function Home() {
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex items-center gap-2 mb-6 justify-center text-gray-800 dark:text-gray-200">
                     <MdBallot className="text-3xl text-blue-600 dark:text-blue-500" />
-                    <h2 className="text-2xl font-bold">Create Quest</h2>
+                    <h2 className="text-2xl font-bold">Create Poll</h2>
                 </div>
                 <CreateQuest onSuccess={() => setActiveTab("feed")} />
             </div>
