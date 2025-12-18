@@ -137,22 +137,32 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
             </div>
         </div>
 
-        {/* SMART TOGGLE: Hanya muncul jika Wallet Support Paymaster */}
-        {canUsePaymaster && (
-            <div className="flex justify-center mt-2">
-                <div 
-                    className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-full cursor-pointer transition-all active:scale-95" 
-                    onClick={() => setUsePaymaster(!usePaymaster)}
-                >
-                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${usePaymaster ? 'bg-blue-600 border-blue-600' : 'bg-transparent border-gray-400'}`}>
-                        {usePaymaster && <MdCheckCircle className="text-white text-sm" />}
-                    </div>
-                    <span className="text-xs font-bold text-blue-600 dark:text-blue-300 flex items-center gap-1">
-                       {usePaymaster ? "Gas Sponsored (Free)" : "I'll Pay Gas"} <MdBolt />
-                    </span>
-                </div>
+        {/* SMART TOGGLE: Warna berubah jadi Biru Solid saat Aktif */}
+{canUsePaymaster && (
+    <div className="flex justify-center mt-2">
+        <div 
+            className={`flex items-center gap-2 px-4 py-2 rounded-full cursor-pointer transition-all active:scale-95 border shadow-sm ${
+                usePaymaster 
+                ? 'bg-blue-600 border-blue-600 text-white shadow-blue-500/20' // Warna saat AKTIF
+                : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500' // Warna saat MATI
+            }`} 
+            onClick={() => setUsePaymaster(!usePaymaster)}
+        >
+            {/* Ikon Checkbox Bulat */}
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                usePaymaster ? 'bg-white border-white' : 'bg-transparent border-gray-400'
+            }`}>
+                {usePaymaster && <MdCheckCircle className="text-blue-600 text-sm" />}
             </div>
-        )}
+
+            {/* Teks Label */}
+            <span className="text-xs font-black tracking-wide flex items-center gap-1">
+                {usePaymaster ? "GAS SPONSORED" : "GAS FEE: ON"} 
+                <MdBolt className={`text-sm ${usePaymaster ? "animate-pulse text-yellow-300" : "text-gray-400"}`} />
+            </span>
+        </div>
+    </div>
+)}
 
         <button 
             onClick={handleCreate}

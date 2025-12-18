@@ -22,36 +22,35 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
   const [confirmChoice, setConfirmChoice] = useState<number | null>(null);
   const [isVotingLoading, setIsVotingLoading] = useState(false);
   
-  // STATE: Toggle Gasless (Default True)
+  // Toggle Gasless (Default True/ON = Sponsored)
   const [usePaymaster, setUsePaymaster] = useState(true);
 
   const { address: userAddress, chain } = useAccount();
-  
-  // 1. DETEKSI KAPABILITAS
   const { data: availableCapabilities } = useCapabilities({ account: userAddress });
 
   const { sendCallsAsync } = useSendCalls();         
   const { writeContractAsync } = useWriteContract(); 
 
-  // 2. LOGIKA: Apakah Wallet Support Paymaster?
   const canUsePaymaster = useMemo(() => {
     if (!availableCapabilities || !chain) return false;
     const capabilitiesForChain = availableCapabilities[chain.id];
     return !!capabilitiesForChain?.["paymasterService"]?.supported && !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
   }, [availableCapabilities, chain]);
 
-  // 3. KONFIGURASI CAPABILITIES
+  // LOGIKA TERBALIK KHUSUS VOTE
   const capabilities = useMemo(() => {
-    if (!usePaymaster || !canUsePaymaster) {
+    if (usePaymaster) {
+        // ON (BIRU): Biarkan Base App mensponsori secara default (Tanpa URL Paymaster)
         return {
             dataSuffix: Attribution.toDataSuffix({ codes: ["bc_2ivoo1oy"] })
         };
     }
+    // OFF (ABU-ABU): Kirim URL Paymaster agar ditolak CDP dan user membayar sendiri
     return {
       paymasterService: { url: process.env.NEXT_PUBLIC_PAYMASTER_URL },
       dataSuffix: Attribution.toDataSuffix({ codes: ["bc_2ivoo1oy"] })
     };
-  }, [canUsePaymaster, usePaymaster]);
+  }, [usePaymaster]);
 
   const { data: pollData } = useReadContract({
     address: address as `0x${string}`,
@@ -75,158 +74,108 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
   const bgDark = useTransform(x, [-200, 0, 200], ["#450a0a", "#1f2937", "#172554"]);
   const activeBg = resolvedTheme === "dark" ? bgDark : bgLight;
 
-  if (!pollData) return <div className="hidden">Loading...</div>;
+  if (!pollData) return null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [question, opt1, count1, opt2, count2] = pollData as any;
-  const total = Number(count1) + Number(count2);
-  const scale = index === 0 ? 1 : 0.95;
-  const y = index === 0 ? 0 : 10;
+  const [question, opt1, , opt2] = pollData as any;
   const userHasVoted = Boolean(hasVoted);
 
   const handleFinalVote = async () => {
     if (!confirmChoice || isVotingLoading) return;
     setIsVotingLoading(true); 
 
-    const onSuccessUI = async () => {
-        setIsVotingLoading(false);
-        await animate(x, 500, { duration: 0.2 });
-        onSwipe("right");
-        setConfirmChoice(null);
-        setShowSelection(false);
-    };
-
     try {
-        const usingGasless = canUsePaymaster && usePaymaster;
-        console.log(`🗳️ Vote (Gasless: ${usingGasless})...`);
-        
         const encodedData = encodeFunctionData({
             abi: POLL_ABI,
             functionName: "vote",
             args: [confirmChoice]
         });
 
-        // METHOD 1: useSendCalls (Smart Wallet / Paymaster)
         await sendCallsAsync({
-            calls: [{
-                to: address as `0x${string}`,
-                data: encodedData,
-            }],
+            calls: [{ to: address as `0x${string}`, data: encodedData }],
             capabilities: capabilities
         });
         
-        await onSuccessUI();
-
+        setIsVotingLoading(false);
+        await animate(x, 500, { duration: 0.2 });
+        onSwipe("right");
+        setConfirmChoice(null);
     } catch (error) {
-        console.warn("⚠️ Error, fallback ke writeContract...", error);
-        
         try {
-            // METHOD 2: FALLBACK (Standard EOA)
             await writeContractAsync({
                 address: address as `0x${string}`,
                 abi: POLL_ABI,
                 functionName: "vote",
                 args: [confirmChoice],
             });
-            await onSuccessUI();
-        } catch (finalError: any) {
-            console.error("❌ Total Failure:", finalError);
-            setIsVotingLoading(false); 
-            if (!finalError.message.includes("User rejected")) {
-                alert("Vote Failed. Check connection.");
-            }
+            onSwipe("right");
+        } catch (finalError) {
+            console.error(finalError);
+        } finally {
+            setIsVotingLoading(false);
         }
     }
   };
 
-  const selectedOptionName = confirmChoice === 1 ? opt1 : opt2;
-
   return (
     <motion.div
-      style={{ x, rotate, opacity, scale, y, backgroundColor: activeBg }}
+      style={{ x, rotate, opacity, scale: index === 0 ? 1 : 0.95, backgroundColor: activeBg }}
       drag={index === 0 && !showSelection && !confirmChoice ? "x" : false} 
-      dragConstraints={{ left: -1000, right: userHasVoted ? 0 : 1000 }}
-      dragElastic={userHasVoted ? { right: 0 } : 0.5}
-      className={`absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center p-6 text-center z-${10 - index} overflow-hidden will-change-transform cursor-grab active:cursor-grabbing`}
-      onDragEnd={async (e, info) => {
-        const offset = info.offset.x;
-        const velocity = info.velocity.x;
-        if ((offset > 100 || velocity > 500) && !userHasVoted) {
-            if (isLoadingVote) return;
-            animate(x, 0, { duration: 0.2 });
-            setShowSelection(true);
-        } else if (offset < -100 || velocity < -500) {
-            await animate(x, -500, { duration: 0.15 });
-            onSwipe("left");
-        } else {
-            animate(x, 0, { duration: 0.2 });
-        }
+      className={`absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center p-6 text-center z-${10 - index} overflow-hidden cursor-grab active:cursor-grabbing`}
+      onDragEnd={(e, info) => {
+        if (info.offset.x > 100 && !userHasVoted) setShowSelection(true);
+        else if (info.offset.x < -100) onSwipe("left");
+        animate(x, 0, { duration: 0.2 });
       }}
     >
       {/* SELECTION MENU */}
       {showSelection && !confirmChoice && (
         <div className="absolute inset-0 z-40 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in-95 duration-200">
-             <div className="mb-4 text-blue-600 dark:text-blue-400"><MdTouchApp className="text-4xl" /></div>
-             <h3 className="text-gray-900 dark:text-white font-bold text-lg mb-4">Choose Option</h3>
+             <h3 className="text-gray-900 dark:text-white font-bold text-lg mb-4 uppercase">Choose Option</h3>
              <div className="flex flex-col gap-3 w-full">
-                <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-bold rounded-xl active:scale-95 transition-transform">{opt1}</button>
-                <button onClick={() => setConfirmChoice(2)} className="w-full py-4 bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800 text-pink-700 dark:text-pink-300 font-bold rounded-xl active:scale-95 transition-transform">{opt2}</button>
-                <button onClick={() => { setShowSelection(false); x.set(0); }} className="mt-2 text-sm text-gray-400 underline">Cancel</button>
+                <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 text-blue-700 font-bold rounded-xl">{opt1}</button>
+                <button onClick={() => setConfirmChoice(2)} className="w-full py-4 bg-pink-50 dark:bg-pink-900/20 border border-pink-200 text-pink-700 font-bold rounded-xl">{opt2}</button>
+                <button onClick={() => { setShowSelection(false); x.set(0); }} className="mt-2 text-sm text-gray-400">Cancel</button>
              </div>
         </div>
       )}
 
       {/* CONFIRMATION LAYER */}
       {confirmChoice && (
-        <div className="absolute inset-0 z-50 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6 animate-in slide-in-from-right-10 duration-200">
-            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4 text-green-600 dark:text-green-400"><MdThumbUp className="text-3xl" /></div>
-            <p className="text-xl font-black text-gray-900 dark:text-white mb-2 leading-tight px-4 border-l-4 border-blue-500">"{selectedOptionName}"</p>
+        <div className="absolute inset-0 z-50 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6">
+            <p className="text-xl font-black mb-4">"{confirmChoice === 1 ? opt1 : opt2}"</p>
             
-            {/* SMART TOGGLE (Muncul jika Support Paymaster) */}
+            {/* TOGGLE BIRU SOLID */}
             {canUsePaymaster && (
                 <div 
-                    className="mb-4 flex items-center justify-center gap-2 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-full cursor-pointer transition-all active:scale-95" 
+                    className={`mb-6 flex items-center gap-2 px-4 py-2 rounded-full cursor-pointer border shadow-sm ${
+                        usePaymaster ? 'bg-blue-600 border-blue-600 text-white shadow-blue-500/20' : 'bg-gray-100 text-gray-500'
+                    }`} 
                     onClick={() => setUsePaymaster(!usePaymaster)}
                 >
-                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${usePaymaster ? 'bg-blue-600 border-blue-600' : 'bg-transparent border-gray-400'}`}>
-                        {usePaymaster && <MdCheckCircle className="text-white text-xs" />}
+                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${usePaymaster ? 'bg-white' : 'bg-transparent'}`}>
+                        {usePaymaster && <MdCheckCircle className="text-blue-600 text-[10px]" />}
                     </div>
-                    <span className="text-xs font-bold text-blue-600 dark:text-blue-300 flex items-center gap-1">
-                    {usePaymaster ? "Gas Sponsored (Free)" : "I'll Pay Gas"} <MdBolt />
+                    <span className="text-[10px] font-black tracking-widest uppercase">
+                       GAS SPONSORED <MdBolt className={usePaymaster ? "text-yellow-300 animate-pulse" : ""} />
                     </span>
                 </div>
             )}
 
-            <div className="flex flex-col gap-3 w-full">
-                <button 
-                    onClick={handleFinalVote} 
-                    disabled={isVotingLoading}
-                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2"
-                >
-                    {isVotingLoading ? "Confirming..." : <>Sign & Vote <MdCheckCircle /></>}
-                </button>
-                <button 
-                    onClick={() => setConfirmChoice(null)} 
-                    disabled={isVotingLoading}
-                    className="w-full py-3 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold rounded-xl"
-                >
-                    Back
-                </button>
-            </div>
+            <button onClick={handleFinalVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-lg">
+                {isVotingLoading ? "Confirming..." : "SIGN & VOTE"}
+            </button>
+            <button onClick={() => setConfirmChoice(null)} className="mt-4 text-sm text-gray-400">Back</button>
         </div>
       )}
 
-      <div className={`mb-4 p-4 rounded-full ${userHasVoted ? 'bg-green-100 text-green-600' : 'bg-gray-50 dark:bg-gray-800 text-blue-500'}`}>
+      <div className={`mb-4 p-4 rounded-full ${userHasVoted ? 'bg-green-100 text-green-600' : 'bg-gray-50 text-blue-500'}`}>
         {userHasVoted ? <MdCheckCircle className="text-4xl" /> : <MdHowToVote className="text-4xl" />}
       </div>
-      <h3 className="text-2xl font-black text-gray-800 dark:text-white mb-2 leading-tight">{question}</h3>
-      <p className="text-gray-500 dark:text-gray-400 font-medium text-sm mt-2">{total} votes {userHasVoted && <span className="text-green-500 font-bold ml-1">(Voted)</span>}</p>
+      <h3 className="text-2xl font-black text-gray-800 dark:text-white leading-tight">{question}</h3>
       
-      <div className="absolute bottom-6 flex justify-between w-full px-8">
-        <div className="flex items-center gap-1 text-red-400/80 dark:text-red-500/80 font-black text-xs tracking-widest"><MdArrowBack /> SKIP</div>
-        <div className={`flex items-center gap-1 font-black text-xs tracking-widest ${userHasVoted ? 'text-gray-300 dark:text-gray-600' : 'text-blue-500/80 dark:text-blue-400/80'}`}>
-            {userHasVoted ? "DONE" : "VOTE"} <MdArrowForward />
-        </div>
+      <div className="absolute bottom-6 flex justify-between w-full px-8 opacity-50 font-black text-[10px] tracking-widest">
+        <div className="flex items-center gap-1"><MdArrowBack /> SKIP</div>
+        <div className="flex items-center gap-1">{userHasVoted ? "DONE" : "VOTE"} <MdArrowForward /></div>
       </div>
     </motion.div>
   );
