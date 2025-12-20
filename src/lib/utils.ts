@@ -9,6 +9,7 @@ export function cn(...inputs: ClassValue[]) {
 const APP_URL = "https://base-vote-app.vercel.app"; 
 
 export const METADATA = {
+  name: "Base Vote",
   title: "Base Vote",
   description: "Create polls and vote on Base",
   

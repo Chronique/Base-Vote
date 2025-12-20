@@ -66,9 +66,8 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   if (!pollData) return null;
   const [question, opt1, votes1, opt2, votes2, endTime] = pollData as any;
   const totalVotes = Number(votes1 || 0) + Number(votes2 || 0);
-  const userHasVoted = Boolean(hasVoted);
+  const isVotedDisplay = Boolean(hasVoted) || localVoted;
   const isEnded = Number(endTime) < Date.now() / 1000;
-  const isVotedDisplay = userHasVoted || localVoted;
 
   const handleVote = async () => {
     if (!confirmChoice || isVotingLoading) return;
@@ -94,34 +93,26 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
             });
         }
 
-        // Tampilkan stempel SUCCESS segera
-        setLocalVoted(true);
+        setLocalVoted(true); 
         setIsVotingLoading(false);
         setShowSelection(false);
         setConfirmChoice(null);
 
-        // Tunggu sebentar agar user lihat stempel, lalu lempar kartu
+        // Beri waktu user lihat stempel SUCCESS
         setTimeout(async () => {
             await animate(x, 1000, { duration: 0.4 });
             onSwipe("right");
         }, 1500);
 
     } catch (e) {
-        console.error("Vote failed", e);
         setIsVotingLoading(false);
     }
-  };
-
-  const handleCancelSelection = () => {
-    setConfirmChoice(null);
-    setShowSelection(false);
-    animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
   };
 
   return (
     <motion.div
       style={{ x, rotate, opacity, scale: index === 0 ? 1 : 0.95, backgroundColor: activeBg }}
-      drag={index === 0 && !showSelection && !confirmChoice ? "x" : false} 
+      drag={index === 0 && !showSelection && !confirmChoice && !isVotedDisplay ? "x" : false} 
       dragConstraints={{ left: 0, right: 0 }}
       className={`absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border dark:border-gray-800 flex flex-col items-center justify-center p-6 text-center z-${10-index} overflow-hidden touch-none`}
       onDragEnd={async (e, info) => {
@@ -154,40 +145,32 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
           <MdPeople className="text-sm" /> {totalVotes} Voters
       </div>
 
-      {(showSelection || confirmChoice) && !isVotedDisplay && !isEnded && (
+      {(showSelection || confirmChoice) && !isVotedDisplay && (
         <div className="absolute inset-0 z-50 bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6">
             {!confirmChoice ? (
-                <div className="w-full flex flex-col gap-3 px-4">
-                    <p className="text-[10px] font-black uppercase text-gray-400 mb-2 tracking-widest">Select Answer</p>
-                    <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900 text-blue-700 dark:text-blue-400 font-bold rounded-2xl active:scale-95">{opt1}</button>
-                    <button onClick={() => setConfirmChoice(2)} className="w-full py-4 bg-pink-50 dark:bg-pink-900/20 border border-pink-100 dark:border-pink-900 text-pink-700 dark:text-pink-400 font-bold rounded-2xl active:scale-95">{opt2}</button>
-                    <button onClick={handleCancelSelection} className="mt-4 text-[10px] font-black text-gray-400 uppercase">Cancel</button>
+                <div className="w-full flex flex-col gap-3">
+                    <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-bold rounded-2xl border border-blue-100">{opt1}</button>
+                    <button onClick={() => setConfirmChoice(2)} className="w-full py-4 bg-pink-50 dark:bg-pink-900/20 text-pink-700 dark:text-pink-400 font-bold rounded-2xl border border-pink-100">{opt2}</button>
+                    <button onClick={() => { setShowSelection(false); animate(x, 0); }} className="mt-4 text-[10px] font-black text-gray-400 uppercase">Cancel</button>
                 </div>
             ) : (
-                <div className="w-full flex flex-col items-center px-4">
-                    <p className="text-xl font-black mb-6 dark:text-white leading-tight text-center">"{confirmChoice === 1 ? opt1 : opt2}"</p>
-                    <div className="mb-6 w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
-                        <div className="flex flex-col items-start">
-                            <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-1">
-                                <MdBolt className={useGas ? "text-yellow-400" : "text-gray-300"} /> Gas Sponsored
-                            </span>
-                            <span className="text-[9px] text-gray-500 font-medium">Fee: {useGas ? 'FREE' : 'USER'}</span>
-                        </div>
-                        <button onClick={() => setUseGas(!useGas)} className={`relative w-10 h-5 rounded-full transition-colors ${useGas ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                <div className="w-full flex flex-col items-center">
+                    <p className="text-lg font-black mb-6 dark:text-white leading-tight text-center">"{confirmChoice === 1 ? opt1 : opt2}"</p>
+                    <div className="mb-6 w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100">
+                        <span className="text-[10px] font-black uppercase text-gray-400 flex items-center gap-1"><MdBolt /> Sponsored</span>
+                        <button onClick={() => setUseGas(!useGas)} className={`relative w-10 h-5 rounded-full ${useGas ? 'bg-blue-600' : 'bg-gray-300'}`}>
                             <div className={`absolute top-1 left-1 bg-white w-3 h-3 rounded-full transition-transform ${useGas ? 'translate-x-5' : 'translate-x-0'}`} />
                         </button>
                     </div>
-                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 disabled:opacity-50">
+                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl disabled:opacity-50">
                         {isVotingLoading ? "SIGNING..." : "CONFIRM VOTE"}
                     </button>
-                    <button onClick={() => setConfirmChoice(null)} disabled={isVotingLoading} className="mt-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Change Answer</button>
                 </div>
             )}
         </div>
       )}
 
       <h3 className="text-2xl font-black leading-tight px-4 text-gray-900 dark:text-white z-10">{question}</h3>
-      
       <div className="absolute bottom-6 flex justify-between w-full px-10 font-black text-[10px] tracking-widest uppercase">
         <div className="text-orange-500 flex items-center gap-1"><MdArrowBack /> SKIP</div>
         <div className={`${isVotedDisplay ? 'text-green-500' : 'text-blue-600 animate-pulse'} flex items-center gap-1`}>
