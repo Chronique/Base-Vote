@@ -1,4 +1,4 @@
-export const FACTORY_ADDRESS = "0x8d4721103C57286dB152D804CBfc26646a6fEB86";
+export const FACTORY_ADDRESS = "0x68bCF313bb863cB07AA9b68FC5D84b4FAfcCd09d";
 
 export const FACTORY_ABI = [
   {
@@ -22,11 +22,18 @@ export const FACTORY_ABI = [
     "type": "event"
   },
   {
+    "inputs": [],
+    "name": "MAX_POLLS",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       { "internalType": "string", "name": "_question", "type": "string" },
       { "internalType": "string", "name": "_option1", "type": "string" },
       { "internalType": "string", "name": "_option2", "type": "string" },
-      { "internalType": "uint256", "name": "_duration", "type": "uint256" }
+      { "internalType": "uint256", "name": "_durationSeconds", "type": "uint256" }
     ],
     "name": "createPoll",
     "outputs": [],
@@ -34,9 +41,7 @@ export const FACTORY_ABI = [
     "type": "function"
   },
   {
-    "inputs": [
-      { "internalType": "uint256", "name": "_pollId", "type": "uint256" }
-    ],
+    "inputs": [{ "internalType": "uint256", "name": "_pollId", "type": "uint256" }],
     "name": "getPollInfo",
     "outputs": [
       { "internalType": "string", "name": "question", "type": "string" },
@@ -89,5 +94,4 @@ export const FACTORY_ABI = [
   }
 ] as const;
 
-// Karena Single Contract, POLL_ABI sekarang sama dengan FACTORY_ABI
 export const POLL_ABI = FACTORY_ABI;
