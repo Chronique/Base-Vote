@@ -12,17 +12,21 @@ import { MdRefresh } from "react-icons/md";
 export default function QuestList() {
   const [globalIndex, setGlobalIndex] = useState(0);
 
-  const { data: pollIds, isLoading, isError, refetch } = useReadContract({
+  const { data: pollIds, isLoading, refetch } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "getPollsPaged",
-    args: [0n, 20n], // TURUNKAN LIMIT KE 20
+    args: [0n, 20n],
     chainId: base.id
   });
 
+  // Filter ID 0 dan balik urutan (Terbaru di atas)
   const allPollIds = useMemo(() => {
     if (!pollIds || !Array.isArray(pollIds)) return [];
-    return [...pollIds].reverse().map(id => Number(id)); 
+    return pollIds
+      .filter((id: any) => id !== 0n) // Buang ID kosong dari padding kontrak
+      .map((id: any) => Number(id))
+      .reverse(); // Newest first
   }, [pollIds]);
 
   const handleRefresh = async () => {
@@ -33,17 +37,10 @@ export default function QuestList() {
   const handleSwipe = () => setGlobalIndex(prev => prev + 1);
 
   if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-black animate-pulse uppercase text-[10px]">Syncing Base...</div>;
-  
-  if (isError) return (
-    <div className="h-64 flex flex-col items-center justify-center gap-2">
-      <p className="text-red-500 font-black text-[10px] uppercase">Failed to load deck</p>
-      <button onClick={handleRefresh} className="text-blue-600 font-bold text-[10px] underline">RETRY</button>
-    </div>
-  );
 
   return (
     <div className="relative w-full h-[400px] flex flex-col items-center justify-center">
-      <button onClick={handleRefresh} className="absolute -top-12 right-4 p-2 text-gray-400 hover:text-blue-600 flex items-center gap-1 text-[10px] font-black uppercase">
+      <button onClick={handleRefresh} className="absolute -top-12 right-4 p-2 text-gray-400 hover:text-blue-600 flex items-center gap-1 text-[10px] font-black uppercase transition-all">
         <MdRefresh /> Refresh
       </button>
 
@@ -56,7 +53,14 @@ export default function QuestList() {
               const cardIdx = globalIndex + offset;
               if (cardIdx >= allPollIds.length) return null;
               const pid = allPollIds[cardIdx];
-              return <SwipeCard key={pid} pollId={pid} onSwipe={handleSwipe} index={offset} />;
+              return (
+                <SwipeCard 
+                  key={pid} // Gunakan PID murni sebagai key agar stabil
+                  pollId={pid} 
+                  onSwipe={handleSwipe} 
+                  index={offset} 
+                />
+              );
             }).reverse()
           )}
         </AnimatePresence>

@@ -79,12 +79,17 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
             args: [BigInt(pollId), BigInt(confirmChoice)]
         });
 
-        if (useGas) {
-            await sendCallsAsync({
-                calls: [{ to: FACTORY_ADDRESS as `0x${string}`, data: encodedData }],
-                capabilities: capabilities as any
-            });
-        } else {
+        // Coba Sponsored dulu, jika gagal/tidak didukung pakai manual
+        try {
+            if (useGas) {
+                await sendCallsAsync({
+                    calls: [{ to: FACTORY_ADDRESS as `0x${string}`, data: encodedData }],
+                    capabilities: capabilities as any
+                });
+            } else {
+                throw new Error("Manual gas selected");
+            }
+        } catch (sponsoredError) {
             await writeContractAsync({ 
                 address: FACTORY_ADDRESS as `0x${string}`, 
                 abi: FACTORY_ABI, 
@@ -103,6 +108,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
             onSwipe("right");
         }, 1500);
     } catch (e) {
+        console.error("Voting failed:", e);
         setIsVotingLoading(false);
     }
   };
@@ -143,10 +149,11 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
           <MdPeople className="text-sm" /> {totalVotes} Voters
       </div>
 
-      <h3 className="text-2xl font-black leading-tight px-4 text-gray-900 dark:text-white">{question}</h3>
+      <h3 className="text-2xl font-black leading-tight px-4 text-gray-900 dark:text-white z-10">{question}</h3>
 
+      {/* SELECTION OVERLAY */}
       {showSelection && !isVotedDisplay && (
-        <div className="absolute inset-0 z-50 bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6">
+        <div className="absolute inset-0 z-50 bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6 transition-all">
             {!confirmChoice ? (
                 <div className="w-full flex flex-col gap-3">
                     <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-bold rounded-2xl border border-blue-100">{opt1}</button>
@@ -155,13 +162,23 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                 </div>
             ) : (
                 <div className="w-full flex flex-col items-center">
-                    <p className="text-lg font-black mb-4 dark:text-white leading-tight">"{confirmChoice === 1 ? opt1 : opt2}"</p>
+                    <p className="text-lg font-black mb-4 dark:text-white text-center">"{confirmChoice === 1 ? opt1 : opt2}"</p>
                     <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl disabled:opacity-50">
                         {isVotingLoading ? "SIGNING..." : "CONFIRM VOTE"}
                     </button>
-                    <button onClick={() => setConfirmChoice(null)} className="mt-4 text-[10px] font-black text-gray-400 uppercase">Change</button>
+                    <button onClick={() => setConfirmChoice(null)} className="mt-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Change</button>
                 </div>
             )}
+        </div>
+      )}
+
+      {/* BOTTOM LABELS - Dipindahkan ke luar conditional overlay agar tetap terlihat */}
+      {!showSelection && (
+        <div className="absolute bottom-6 flex justify-between w-full px-10 font-black text-[10px] tracking-widest uppercase text-gray-400 z-10">
+            <div className="flex items-center gap-1"><MdArrowBack /> SKIP</div>
+            <div className={`${isVotedDisplay ? 'text-green-500' : 'text-blue-600 animate-pulse'} flex items-center gap-1`}>
+                {isVotedDisplay ? "DONE" : "VOTE"} <MdArrowForward />
+            </div>
         </div>
       )}
     </motion.div>

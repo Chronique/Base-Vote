@@ -55,8 +55,8 @@ export default function MyActivity() {
   });
 
   const formattedPollIds = useMemo(() => {
-    if (!pollIds || !Array.isArray(pollIds)) return [];
-    return [...pollIds].reverse();
+  if (!pollIds || !Array.isArray(pollIds)) return [];
+  return [...pollIds].filter(id => id !== 0n).reverse();
   }, [pollIds]);
 
   if (isLoading) return <div className="text-center mt-20 font-black text-[10px] text-gray-400 animate-pulse uppercase">Syncing Activity...</div>;
