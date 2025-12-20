@@ -40,14 +40,13 @@ export default function QuestList() {
     setGlobalIndex(nextIndex);
     setBatchCounter(nextBatch);
 
-    // Trigger CycleMeme setelah 10 kartu atau kartu terakhir
     if (nextBatch >= 10 || nextIndex >= allPollIds.length) {
       setTimeout(() => setIsCycleActive(true), 600); 
     }
   };
 
-  if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-bold">Loading deck...</div>;
-  if (allPollIds.length === 0) return <div className="h-64 flex items-center justify-center text-gray-400 font-bold">No polls available.</div>;
+  if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-bold italic animate-pulse text-xs uppercase tracking-widest">Loading Deck...</div>;
+  if (allPollIds.length === 0) return <div className="h-64 flex items-center justify-center text-gray-400 font-bold italic text-xs uppercase tracking-widest">No cards available.</div>;
 
   return (
     <div className="relative w-full h-[400px] flex items-center justify-center perspective-1000">

@@ -19,7 +19,6 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   const [showSelection, setShowSelection] = useState(false);
   const [confirmChoice, setConfirmChoice] = useState<number | null>(null);
   const [isVotingLoading, setIsVotingLoading] = useState(false);
-  const [usePaymaster, setUsePaymaster] = useState(true);
 
   const { address: userAddress, chain } = useAccount();
   const { data: availableCapabilities } = useCapabilities({ account: userAddress });
@@ -53,8 +52,8 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   });
 
   const x = useMotionValue(0);
-  // FIX: Rotasi diperkecil agar tidak miring
-  const rotate = useTransform(x, [-200, 200], [-2, 2]);
+  // FIX: Set rotasi ke 0 agar kartu tetap lurus (straight)
+  const rotate = useTransform(x, [-200, 200], [0, 0]);
   const opacity = useTransform(x, [-200, -150, 0, 150, 200], [0, 1, 1, 1, 0]);
 
   if (!pollData) return null;
@@ -96,7 +95,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
       drag={index === 0 && !showSelection && !confirmChoice && !isEnded ? "x" : false} 
       className={`absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border bg-white dark:bg-gray-900 flex flex-col items-center justify-center p-6 text-center z-${20-index} overflow-hidden`}
       onDragEnd={(e, info) => {
-        // FIX: Swipe threshold lebih pendek (50px)
+        // FIX: Swipe threshold diperpendek agar lebih ringan
         if (info.offset.x > 50 && !userHasVoted && !isEnded) {
             setShowSelection(true); 
             animate(x, 100);
@@ -111,7 +110,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
         <div className="absolute inset-0 z-50 bg-white/98 dark:bg-gray-950 flex flex-col items-center justify-center p-6 animate-in fade-in duration-200">
             {!confirmChoice ? (
                 <div className="w-full flex flex-col gap-3 px-4">
-                    <p className="text-[10px] font-black uppercase text-gray-400 mb-2 tracking-widest">Choose Answer</p>
+                    <p className="text-[10px] font-black uppercase text-gray-400 mb-2 tracking-widest">Choose Option</p>
                     <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 border border-blue-200 text-blue-700 font-bold rounded-2xl active:scale-95 transition-transform">{opt1}</button>
                     <button onClick={() => setConfirmChoice(2)} className="w-full py-4 bg-pink-50 border border-pink-200 text-pink-700 font-bold rounded-2xl active:scale-95 transition-transform">{opt2}</button>
                     <button onClick={() => { setShowSelection(false); animate(x, 0); }} className="mt-2 text-[10px] font-black text-gray-400 uppercase">Cancel</button>
@@ -124,10 +123,10 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                             <MdBolt className="text-yellow-300 animate-pulse" /> GAS SPONSORED
                         </span>
                     </div>
-                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all">
+                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95">
                         {isVotingLoading ? "SIGNING..." : "SIGN & VOTE"}
                     </button>
-                    <button onClick={() => setConfirmChoice(null)} className="mt-4 text-xs font-bold text-gray-400 underline decoration-2 underline-offset-4">Change Option</button>
+                    <button onClick={() => setConfirmChoice(null)} className="mt-4 text-xs font-bold text-gray-400 underline decoration-2 underline-offset-4">Change Choice</button>
                 </div>
             )}
         </div>
@@ -135,7 +134,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
 
       {isEnded && <div className="absolute top-4 right-4 bg-red-100 text-red-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Expired</div>}
       
-      {/* Vote Count */}
+      {/* Vote Count Indicator */}
       <div className="absolute top-6 left-6 flex items-center gap-1.5 text-gray-400">
           <MdPeople className="text-lg" />
           <span className="text-[11px] font-black tracking-tighter uppercase">{totalVotes} Votes</span>
