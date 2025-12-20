@@ -32,7 +32,6 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
     return !!capabilitiesForChain?.["paymasterService"]?.supported && !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
   }, [availableCapabilities, chain]);
 
-  // LOGIKA TERBALIK KHUSUS VOTE
   const capabilities = useMemo(() => {
     const paymasterUrl = process.env.NEXT_PUBLIC_PAYMASTER_URL;
     if (usePaymaster || !paymasterUrl) {
@@ -71,11 +70,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
     if (!confirmChoice || isVotingLoading || isEnded) return;
     setIsVotingLoading(true); 
     try {
-        const encodedData = encodeFunctionData({
-            abi: POLL_ABI,
-            functionName: "vote",
-            args: [confirmChoice]
-        });
+        const encodedData = encodeFunctionData({ abi: POLL_ABI, functionName: "vote", args: [confirmChoice] });
         await sendCallsAsync({
             calls: [{ to: address as `0x${string}`, data: encodedData }],
             capabilities: capabilities as any
@@ -96,14 +91,12 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
     <motion.div
       style={{ x, rotate, opacity, scale: index === 0 ? 1 : 0.95 }}
       drag={index === 0 && !showSelection && !confirmChoice ? "x" : false} 
-      className="absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border bg-white dark:bg-gray-900 flex flex-col items-center justify-center p-6 text-center"
+      className={`absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border bg-white dark:bg-gray-900 flex flex-col items-center justify-center p-6 text-center z-${10-index}`}
       onDragEnd={(e, info) => {
         if (info.offset.x > 100) {
-            // SWIPE KANAN: Hanya jika belum vote & belum ended
             if (!userHasVoted && !isEnded) setShowSelection(true);
             else animate(x, 0, { duration: 0.2 });
         } else if (info.offset.x < -100) {
-            // SWIPE KIRI: Selalu skip
             onSwipe("left");
         } else {
             animate(x, 0, { duration: 0.2 });
@@ -127,7 +120,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         <div className="absolute inset-0 z-50 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6">
             <p className="text-xl font-black mb-6">"{confirmChoice === 1 ? opt1 : opt2}"</p>
             {canUsePaymaster && (
-                <div className={`mb-6 flex items-center gap-2 px-4 py-2 rounded-full cursor-pointer border ${usePaymaster ? 'bg-blue-600 border-blue-600 text-white shadow-blue-500/20' : 'bg-gray-100 text-gray-500'}`} onClick={() => setUsePaymaster(!usePaymaster)}>
+                <div className={`mb-6 flex items-center gap-2 px-4 py-2 rounded-full cursor-pointer border ${usePaymaster ? 'bg-blue-600 text-white shadow-blue-500/20' : 'bg-gray-100 text-gray-400'}`} onClick={() => setUsePaymaster(!usePaymaster)}>
                     <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${usePaymaster ? 'bg-white' : 'bg-transparent'}`}>
                         {usePaymaster && <MdCheckCircle className="text-blue-600 text-[10px]" />}
                     </div>
