@@ -108,14 +108,14 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         <div className="absolute inset-0 z-50 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6">
             <p className="text-xl font-black mb-6">"{confirmChoice === 1 ? opt1 : opt2}"</p>
             {canUsePaymaster && (
-                <div className={`mb-6 flex items-center gap-2 px-4 py-2 rounded-full cursor-pointer border ${usePaymaster ? 'bg-blue-600 text-white shadow-blue-500/20' : 'bg-gray-100 text-gray-400'}`} onClick={() => setUsePaymaster(!usePaymaster)}>
+                <div className={`mb-6 flex items-center gap-2 px-4 py-2 rounded-full cursor-pointer border ${usePaymaster ? 'bg-blue-600 border-blue-600 text-white shadow-blue-500/20' : 'bg-gray-100 text-gray-400'}`} onClick={() => setUsePaymaster(!usePaymaster)}>
                     <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${usePaymaster ? 'bg-white' : 'bg-transparent'}`}>
                         {usePaymaster && <MdCheckCircle className="text-blue-600 text-[10px]" />}
                     </div>
                     <span className="text-[10px] font-black tracking-widest uppercase">GAS SPONSORED <MdBolt className={usePaymaster ? "text-yellow-300 animate-pulse" : ""} /></span>
                 </div>
             )}
-            <button onClick={handleFinalVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-lg">SIGN & VOTE</button>
+            <button onClick={handleFinalVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-lg active:scale-95 transition-all">SIGN & VOTE</button>
             <button onClick={() => setConfirmChoice(null)} className="mt-4 text-xs text-gray-400 font-bold">Back</button>
         </div>
       )}
@@ -123,6 +123,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         {userHasVoted ? <MdCheckCircle className="text-4xl" /> : <MdHowToVote className="text-4xl" />}
       </div>
       <h3 className="text-2xl font-black leading-tight">{question}</h3>
+      {userHasVoted && <p className="text-[10px] text-green-500 font-black mt-2 uppercase tracking-widest">Already Voted</p>}
     </motion.div>
   );
 });
