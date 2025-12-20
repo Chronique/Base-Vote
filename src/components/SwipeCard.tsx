@@ -47,23 +47,19 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "hasVoted",
-    args: [BigInt(pollId), userAddress as `0x${string}`],
+    args: userAddress ? [BigInt(pollId), userAddress] : undefined,
     query: { enabled: !!userAddress }
   });
 
   const x = useMotionValue(0);
-  // Meluruskan kartu: Rotasi dikurangi agar tidak terlalu miring
-  const rotate = useTransform(x, [-200, 200], [-8, 8]);
+  // FIX: Mengurangi rotasi agar kartu terlihat lurus
+  const rotate = useTransform(x, [-200, 200], [-5, 5]);
   const opacity = useTransform(x, [-200, -150, 0, 150, 200], [0, 1, 1, 1, 0]);
 
   if (!pollData) return null;
-
-  // Destruktur data sesuai ABI kontrak baru
   const [question, opt1, votes1, opt2, votes2, endTime] = pollData as any;
   const isEnded = Number(endTime) < Date.now() / 1000;
   const userHasVoted = Boolean(hasVoted);
-  
-  // Hitung total vote
   const totalVotes = Number(votes1 || 0) + Number(votes2 || 0);
 
   const handleVote = async () => {
@@ -94,7 +90,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
       drag={index === 0 && !showSelection && !confirmChoice && !isEnded ? "x" : false} 
       className={`absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border bg-white dark:bg-gray-900 flex flex-col items-center justify-center p-6 text-center z-${20-index} overflow-hidden`}
       onDragEnd={(e, info) => {
-        // Threshold diperpendek ke 50 agar swipe lebih ringan
+        // FIX: Swipe Threshold diperpendek
         if (info.offset.x > 50 && !userHasVoted && !isEnded) {
             setShowSelection(true); 
             animate(x, 120);
@@ -106,25 +102,23 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
       }}
     >
       {(showSelection || confirmChoice) && !userHasVoted && !isEnded && (
-        <div className="absolute inset-0 z-50 bg-white/98 dark:bg-gray-950 flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in-95 duration-200">
+        <div className="absolute inset-0 z-50 bg-white/98 dark:bg-gray-950 flex flex-col items-center justify-center p-6">
             {!confirmChoice ? (
-                <div className="w-full flex flex-col gap-3 px-4 text-center">
+                <div className="w-full flex flex-col gap-3 px-4">
                     <p className="text-[10px] font-black uppercase text-gray-400 mb-2 tracking-widest">Choose Answer</p>
-                    <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 border border-blue-200 text-blue-700 font-bold rounded-2xl active:scale-95 transition-transform">{opt1}</button>
-                    <button onClick={() => setConfirmChoice(2)} className="w-full py-4 bg-pink-50 border border-pink-200 text-pink-700 font-bold rounded-2xl active:scale-95 transition-transform">{opt2}</button>
+                    <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 border border-blue-200 text-blue-700 font-bold rounded-2xl active:scale-95">{opt1}</button>
+                    <button onClick={() => setConfirmChoice(2)} className="w-full py-4 bg-pink-50 border border-pink-200 text-pink-700 font-bold rounded-2xl active:scale-95">{opt2}</button>
                     <button onClick={() => { setShowSelection(false); animate(x, 0); }} className="mt-2 text-[10px] font-black text-gray-400 uppercase">Cancel</button>
                 </div>
             ) : (
                 <div className="w-full flex flex-col items-center px-4">
                     <p className="text-xl font-black mb-6">"{confirmChoice === 1 ? opt1 : opt2}"</p>
-                    
                     <div className="mb-6 flex items-center gap-2 px-5 py-2 rounded-full bg-blue-600 text-white border border-blue-400 shadow-lg">
                         <span className="text-[10px] font-black uppercase flex items-center gap-1 tracking-widest">
                             <MdBolt className="text-yellow-300 animate-pulse" /> GAS SPONSORED
                         </span>
                     </div>
-
-                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all">
+                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95">
                         {isVotingLoading ? "SIGNING..." : "SIGN & VOTE"}
                     </button>
                     <button onClick={() => setConfirmChoice(null)} className="mt-4 text-xs font-bold text-gray-400 underline decoration-2 underline-offset-4">Change Option</button>
@@ -141,7 +135,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
           <span className="text-[11px] font-black tracking-tighter">{totalVotes} VOTES</span>
       </div>
 
-      <h3 className="text-2xl font-black leading-tight px-4 text-gray-800 dark:text-white mt-4">{question}</h3>
+      <h3 className="text-2xl font-black leading-tight px-4 text-gray-800 dark:text-white">{question}</h3>
       {userHasVoted && <p className="text-[10px] text-green-500 font-black mt-2 uppercase tracking-widest">Already Voted</p>}
       
       <div className="absolute bottom-6 flex justify-between w-full px-10 font-black text-[10px] tracking-widest uppercase">

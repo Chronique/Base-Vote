@@ -44,7 +44,7 @@ export default function QuestList() {
     }
   };
 
-  if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-bold">Loading Cards...</div>;
+  if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-bold">Loading...</div>;
   if (allPollIds.length === 0) return <div className="h-64 flex items-center justify-center text-gray-400 font-bold italic">No cards available.</div>;
 
   return (
