@@ -1,17 +1,22 @@
 "use client";
 
-import { createConfig, http, WagmiProvider } from "wagmi";
-import { base, optimism } from "wagmi/chains";
+import { createConfig, http, WagmiProvider, fallback } from "wagmi";
+import { base, baseSepolia } from "wagmi/chains"; // Tambahkan Sepolia jika sedang tes
 import { baseAccount } from "wagmi/connectors";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { farcasterMiniApp } from "@farcaster/miniapp-wagmi-connector";
 import { METADATA } from "../../lib/utils";
 
 export const config = createConfig({
-  chains: [base, optimism],
+  // Gunakan base atau baseSepolia sesuai tempat kontrak di-deploy
+  chains: [base, baseSepolia], 
   transports: {
-    [base.id]: http(),
-    [optimism.id]: http(),
+    [base.id]: fallback([
+      http("URL_RPC_1"), // Ganti dengan RPC Alchemy/QuickNode/Lainnya
+      http("URL_RPC_2"),
+      http(), // Public RPC sebagai cadangan terakhir
+    ]),
+    [baseSepolia.id]: http(),
   },
   connectors: [
     farcasterMiniApp(), 
