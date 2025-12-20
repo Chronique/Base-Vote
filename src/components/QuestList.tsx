@@ -2,76 +2,73 @@
 
 import { useState, useMemo } from "react";
 import { useReadContract } from "wagmi";
-import { FACTORY_ABI, FACTORY_ADDRESS } from "~/app/constants";
-import { AnimatePresence } from "framer-motion";
+import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants";
 import SwipeCard from "./SwipeCard";
-import CycleMeme from "./CycleMeme"; 
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function QuestList() {
-  const { data: allPolls, isLoading, refetch } = useReadContract({
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [cycleCount, setCycleCount] = useState(0);
+
+  const { data: pollAddresses } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
-    functionName: "getAllPolls",
-    query: { staleTime: 1000 * 60 * 5 }
+    functionName: "allPolls",
   });
 
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  const polls = useMemo(() => {
-    return (allPolls as string[] || []).slice().reverse();
-  }, [allPolls]);
-
-  if (isLoading) return (
-    <div className="flex flex-col items-center justify-center py-40 space-y-3">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <p className="text-xs text-gray-400 animate-pulse">Loading deck...</p>
-    </div>
-  );
+  // Ambil 10 kartu saja untuk siklus ini
+  const activePolls = useMemo(() => {
+    if (!pollAddresses) return [];
+    return [...pollAddresses].reverse().slice(0, 10);
+  }, [pollAddresses]);
 
   const handleSwipe = () => {
-    setTimeout(() => {
-        setCurrentIndex((prev) => prev + 1);
-    }, 200); 
+    if (currentIndex < activePolls.length) {
+      setCurrentIndex((prev) => prev + 1);
+    } else {
+      // Masuk ke Cycle Meme jika sudah habis 10
+      setCurrentIndex(0);
+      setCycleCount((prev) => prev + 1);
+    }
   };
 
-  // === PERBAIKAN DI SINI: CycleMeme Container ===
-  if (currentIndex >= polls.length && polls.length > 0) {
-    return (
-      // Pastikan container ini me-center isinya
-      <div className="h-[55vh] w-full flex items-center justify-center px-4 mt-4">
-        <CycleMeme 
-            onRefresh={() => { 
-                refetch(); 
-                setCurrentIndex(0); 
-            }} 
-        />
-      </div>
-    );
+  if (!pollAddresses || pollAddresses.length === 0) {
+    return <div className="text-gray-400 font-bold">No polls available yet.</div>;
   }
 
-  if (polls.length === 0) {
-     return (
-        <div className="flex flex-col items-center justify-center h-[55vh] text-center px-6">
-            <p className="text-gray-500">No polls available yet.</p>
-            <button onClick={() => refetch()} className="text-blue-500 text-sm mt-2">Refresh</button>
-        </div>
-     );
-  }
+  // Tampilkan MEME CARD jika 10 kartu sudah habis di-swipe
+  const showMemeCard = currentIndex === activePolls.length;
 
   return (
-    <div className="relative h-[55vh] w-full flex justify-center items-center mt-4">
-      <AnimatePresence>
-        {polls.slice(currentIndex, currentIndex + 2).map((pollAddress, i) => {
-            const isFront = i === 0; 
+    <div className="relative w-full h-80 flex items-center justify-center perspective-1000">
+      <AnimatePresence mode="popLayout">
+        {showMemeCard ? (
+          <motion.div 
+            key={`meme-${cycleCount}`}
+            initial={{ scale: 0.8, opacity: 0, rotate: -5 }}
+            animate={{ scale: 1, opacity: 1, rotate: 0 }}
+            exit={{ x: 500, opacity: 0 }}
+            className="absolute w-full max-w-sm h-80 rounded-3xl shadow-xl bg-blue-600 flex flex-col items-center justify-center p-6 text-white text-center cursor-pointer"
+            onClick={handleSwipe}
+          >
+            <h2 className="text-4xl font-black mb-2 uppercase italic">Hold On!</h2>
+            <p className="text-sm font-bold opacity-80 mb-4">You've swiped 10 polls. Time for a cycle reset!</p>
+            <div className="w-32 h-32 bg-white/20 rounded-2xl flex items-center justify-center text-6xl">🚀</div>
+            <p className="mt-4 text-[10px] font-black tracking-[0.3em] uppercase underline">Tap to Continue</p>
+          </motion.div>
+        ) : (
+          activePolls.slice(currentIndex, currentIndex + 2).reverse().map((addr, i) => {
+            const isTop = (currentIndex + i) === currentIndex;
             return (
-                <SwipeCard 
-                    key={pollAddress}
-                    address={pollAddress}
-                    index={isFront ? 0 : 1}
-                    onSwipe={handleSwipe}
-                />
+              <SwipeCard 
+                key={addr} 
+                address={addr} 
+                onSwipe={handleSwipe} 
+                index={i} 
+              />
             );
-        }).reverse()} 
+          })
+        )}
       </AnimatePresence>
     </div>
   );
