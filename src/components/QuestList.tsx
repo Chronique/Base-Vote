@@ -4,13 +4,16 @@ import { useState, useMemo } from "react";
 import { useReadContract } from "wagmi";
 import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants";
 import SwipeCard from "./SwipeCard";
-import { motion, AnimatePresence } from "framer-motion";
+import CycleMeme from "./CycleMeme"; // Memanggil komponen perfect milikmu
+import { AnimatePresence } from "framer-motion";
 
 export default function QuestList() {
   const [globalIndex, setGlobalIndex] = useState(0);
   const [batchCounter, setBatchCounter] = useState(0);
+  // State khusus untuk menampilkan CycleMeme
+  const [isCycleActive, setIsCycleActive] = useState(false);
 
-  const { data: pollIds, isError, isLoading } = useReadContract({
+  const { data: pollIds, isLoading } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "getPollsPaged",
@@ -22,53 +25,45 @@ export default function QuestList() {
     return pollIds.map(id => Number(id)); 
   }, [pollIds]);
 
-  const handleSwipe = () => {
-    if (allPollIds.length === 0) return;
-    
-    setGlobalIndex((prev) => prev + 1);
-    setBatchCounter((prev) => prev + 1);
-  };
-
-  const handleMemeClick = () => {
-    // Jika sudah di ujung daftar kartu, balik ke awal
+  // Fungsi yang dipanggil saat user selesai klik "LFG" di CycleMeme
+  const handleRefresh = () => {
     if (globalIndex >= allPollIds.length) {
-        setGlobalIndex(0);
+      setGlobalIndex(0); // Balik ke awal jika sudah habis
     }
-    setBatchCounter(0); 
+    setBatchCounter(0);
+    setIsCycleActive(false); // Sembunyikan CycleMeme, balik ke kartu
   };
 
-  // LOGIKA: Meme muncul tiap 10 swipe ATAU saat mencapai kartu terakhir (walau < 10)
-  const showMemeCard = batchCounter === 10 || (allPollIds.length > 0 && globalIndex >= allPollIds.length);
+  const handleSwipe = () => {
+    const nextIndex = globalIndex + 1;
+    const nextBatch = batchCounter + 1;
 
-  if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400">Loading Feed...</div>;
-  if (isError || allPollIds.length === 0) return <div className="h-64 flex items-center justify-center text-gray-400 font-bold italic">No polls found.</div>;
+    setGlobalIndex(nextIndex);
+    setBatchCounter(nextBatch);
+
+    // TRIGGER CYCLE MEME:
+    // Jika sudah 10 kartu ATAU daftar sudah habis
+    if (nextBatch >= 10 || nextIndex >= allPollIds.length) {
+      setTimeout(() => setIsCycleActive(true), 500); // Beri jeda animasi swipe selesai
+    }
+  };
+
+  if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-bold">Loading Cards...</div>;
+  if (allPollIds.length === 0) return <div className="h-64 flex items-center justify-center text-gray-400 font-bold">No Cards Available.</div>;
 
   return (
-    <div className="relative w-full h-80 flex items-center justify-center perspective-1000">
-      <AnimatePresence mode="popLayout">
-        {showMemeCard ? (
-          <motion.div 
-            key="meme-cycle"
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ x: 500, opacity: 0 }}
-            className="absolute w-full max-w-sm h-80 rounded-3xl shadow-2xl bg-blue-600 flex flex-col items-center justify-center p-6 text-white text-center cursor-pointer z-50"
-            onClick={handleMemeClick}
-          >
-            <h2 className="text-4xl font-black mb-2 uppercase italic leading-none">
-              {globalIndex >= allPollIds.length ? "RELOAD!" : "NEXT BATCH!"}
-            </h2>
-            <p className="text-sm font-bold opacity-80 mb-4 px-4">
-               {globalIndex >= allPollIds.length ? "End of list. Tap to restart!" : "Ready for the next set?"}
-            </p>
-            <div className="text-6xl my-4">🚀</div>
-            <p className="mt-4 text-[10px] font-black tracking-[0.3em] uppercase underline">Tap to Continue</p>
-          </motion.div>
+    <div className="relative w-full h-[400px] flex items-center justify-center perspective-1000">
+      <AnimatePresence mode="wait">
+        {isCycleActive ? (
+          <div className="w-full flex justify-center py-4">
+            {/* Menggunakan CycleMeme milikmu tanpa modifikasi */}
+            <CycleMeme onRefresh={handleRefresh} />
+          </div>
         ) : (
+          /* Render kartu hanya jika CycleMeme tidak aktif */
           [0, 1].map((offset) => {
             const cardIdx = globalIndex + offset;
             if (cardIdx >= allPollIds.length) return null;
-            
             const pid = allPollIds[cardIdx];
             return (
               <SwipeCard 
