@@ -10,7 +10,6 @@ export default function QuestList() {
   const [globalIndex, setGlobalIndex] = useState(0);
   const [batchCounter, setBatchCounter] = useState(0);
 
-  // Ambil 30 kartu terbaru (Pagination) agar performa tetap ringan
   const { data: pollIds, isError, isLoading } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
@@ -26,25 +25,19 @@ export default function QuestList() {
   const handleSwipe = () => {
     if (allPollIds.length === 0) return;
     
-    // Geser ke kartu berikutnya
-    const nextIndex = globalIndex + 1;
-    setGlobalIndex(nextIndex);
-    
-    // Tambah hitungan batch (maks 10)
+    setGlobalIndex((prev) => prev + 1);
     setBatchCounter((prev) => prev + 1);
   };
 
   const handleMemeClick = () => {
-    // Jika sudah mencapai akhir daftar, reset ke kartu pertama
+    // Jika sudah di ujung daftar kartu, balik ke awal
     if (globalIndex >= allPollIds.length) {
         setGlobalIndex(0);
     }
-    setBatchCounter(0); // Reset hitungan sesi untuk 10 kartu berikutnya
+    setBatchCounter(0); 
   };
 
-  // KONDISI MEME CARD:
-  // 1. Sudah swipe 10 kartu dalam satu sesi.
-  // 2. ATAU sudah mencapai kartu terakhir dalam daftar.
+  // LOGIKA: Meme muncul tiap 10 swipe ATAU saat mencapai kartu terakhir (walau < 10)
   const showMemeCard = batchCounter === 10 || (allPollIds.length > 0 && globalIndex >= allPollIds.length);
 
   if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400">Loading Feed...</div>;
@@ -63,18 +56,15 @@ export default function QuestList() {
             onClick={handleMemeClick}
           >
             <h2 className="text-4xl font-black mb-2 uppercase italic leading-none">
-              {globalIndex >= allPollIds.length ? "FINISH!" : "NEXT BATCH!"}
+              {globalIndex >= allPollIds.length ? "RELOAD!" : "NEXT BATCH!"}
             </h2>
             <p className="text-sm font-bold opacity-80 mb-4 px-4">
-              {globalIndex >= allPollIds.length 
-                ? "You've swiped everything. Back to the start?" 
-                : `Good job! Ready for card ${globalIndex + 1}?`}
+               {globalIndex >= allPollIds.length ? "End of list. Tap to restart!" : "Ready for the next set?"}
             </p>
             <div className="text-6xl my-4">🚀</div>
-            <p className="mt-4 text-[10px] font-black tracking-[0.3em] uppercase underline decoration-2 underline-offset-4">Tap to Continue</p>
+            <p className="mt-4 text-[10px] font-black tracking-[0.3em] uppercase underline">Tap to Continue</p>
           </motion.div>
         ) : (
-          /* Render kartu aktif dan kartu cadangan di bawahnya */
           [0, 1].map((offset) => {
             const cardIdx = globalIndex + offset;
             if (cardIdx >= allPollIds.length) return null;

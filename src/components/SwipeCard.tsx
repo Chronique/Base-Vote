@@ -32,7 +32,6 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
     return !!capabilitiesForChain?.["paymasterService"]?.supported && !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
   }, [availableCapabilities, chain]);
 
-  // LOGIKA NORMAL: ON = Sponsored (Karena alamat tetap 0x8d47...)
   const capabilities = useMemo(() => {
     const paymasterUrl = process.env.NEXT_PUBLIC_PAYMASTER_URL;
     if (usePaymaster && canUsePaymaster && paymasterUrl) {
@@ -86,12 +85,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
         onSwipe("right");
     } catch (error) {
         try {
-            await writeContractAsync({ 
-                address: FACTORY_ADDRESS as `0x${string}`, 
-                abi: FACTORY_ABI, 
-                functionName: "vote", 
-                args: [BigInt(pollId), BigInt(confirmChoice)] 
-            });
+            await writeContractAsync({ address: FACTORY_ADDRESS as `0x${string}`, abi: FACTORY_ABI, functionName: "vote", args: [BigInt(pollId), BigInt(confirmChoice)] });
             onSwipe("right");
         } catch (e) {}
     } finally {
@@ -102,27 +96,33 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   return (
     <motion.div
       style={{ x, rotate, opacity, scale: index === 0 ? 1 : 0.95 }}
-      drag={index === 0 && !showSelection && !confirmChoice && !isEnded ? "x" : false} 
+      drag={index === 0 && !showSelection && !confirmChoice ? "x" : false} 
       className={`absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border bg-white dark:bg-gray-900 flex flex-col items-center justify-center p-6 text-center z-${10-index} overflow-hidden`}
       onDragEnd={(e, info) => {
-        if (info.offset.x > 100 && !userHasVoted && !isEnded) setShowSelection(true);
-        else if (info.offset.x < -100) onSwipe("left");
-        else animate(x, 0, { duration: 0.2 });
+        if (info.offset.x > 100) {
+            // SWIPE KANAN: Hanya jika belum vote
+            if (!userHasVoted && !isEnded) setShowSelection(true);
+            else animate(x, 0, { duration: 0.2 }); // Mental balik jika sudah vote
+        } else if (info.offset.x < -100) {
+            // SWIPE KIRI: Selalu bisa skip
+            onSwipe("left");
+        } else {
+            animate(x, 0, { duration: 0.2 });
+        }
       }}
     >
-      {/* STATUS EXPIRED */}
       {isEnded && (
-        <div className="absolute top-4 right-4 bg-red-100 text-red-600 px-3 py-1 rounded-full text-[10px] font-black flex items-center gap-1 z-50">
-           <MdTimerOff /> VOTE ENDED
+        <div className="absolute top-4 right-4 bg-red-100 text-red-600 px-3 py-1 rounded-full text-[10px] font-black z-50">
+           VOTE ENDED
         </div>
       )}
 
-      {showSelection && !confirmChoice && (
-        <div className="absolute inset-0 z-40 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6 animate-in fade-in duration-200">
-             <h3 className="font-black mb-4 uppercase text-xs tracking-widest text-gray-500">Pick Your Choice</h3>
+      {showSelection && (
+        <div className="absolute inset-0 z-40 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6">
+             <h3 className="font-black mb-4 uppercase text-xs text-gray-400">Cast Your Vote</h3>
              <div className="flex flex-col gap-3 w-full px-4">
-                <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 text-blue-700 font-bold rounded-xl active:scale-95 transition-transform">{opt1}</button>
-                <button onClick={() => setConfirmChoice(2)} className="w-full py-4 bg-pink-50 dark:bg-pink-900/20 border border-pink-200 text-pink-700 font-bold rounded-xl active:scale-95 transition-transform">{opt2}</button>
+                <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 border border-blue-200 text-blue-700 font-bold rounded-xl active:scale-95 transition-transform">{opt1}</button>
+                <button onClick={() => setConfirmChoice(2)} className="w-full py-4 bg-pink-50 border border-pink-200 text-pink-700 font-bold rounded-xl active:scale-95 transition-transform">{opt2}</button>
                 <button onClick={() => { setShowSelection(false); x.set(0); }} className="mt-2 text-[10px] font-black text-gray-400 uppercase">Cancel</button>
              </div>
         </div>
@@ -130,27 +130,11 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
 
       {confirmChoice && (
         <div className="absolute inset-0 z-50 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6">
-            <div className="mb-4 text-green-500"><MdThumbUp className="text-4xl" /></div>
             <p className="text-xl font-black mb-6 leading-tight px-4">"{confirmChoice === 1 ? opt1 : opt2}"</p>
-            
-            {canUsePaymaster && (
-                <div 
-                    className={`mb-6 flex items-center gap-2 px-4 py-2 rounded-full cursor-pointer border shadow-sm transition-all ${
-                        usePaymaster ? 'bg-blue-600 border-blue-600 text-white shadow-blue-500/20' : 'bg-gray-100 text-gray-500'
-                    }`} 
-                    onClick={() => setUsePaymaster(!usePaymaster)}
-                >
-                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${usePaymaster ? 'bg-white' : 'bg-transparent'}`}>
-                        {usePaymaster && <MdCheckCircle className="text-blue-600 text-[10px]" />}
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest">GAS SPONSORED <MdBolt className={usePaymaster ? "text-yellow-300 animate-pulse" : ""} /></span>
-                </div>
-            )}
-
             <button onClick={handleFinalVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-lg active:scale-95 transition-all">
-                {isVotingLoading ? "SIGNING..." : "SIGN & VOTE"}
+                {isVotingLoading ? "SIGNING..." : "CONFIRM VOTE"}
             </button>
-            <button onClick={() => setConfirmChoice(null)} className="mt-4 text-xs font-bold text-gray-400 underline">Back</button>
+            <button onClick={() => setConfirmChoice(null)} className="mt-4 text-xs font-bold text-gray-400">Back</button>
         </div>
       )}
 
@@ -158,12 +142,16 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
         {userHasVoted ? <MdCheckCircle className="text-4xl" /> : <MdHowToVote className="text-4xl" />}
       </div>
       <h3 className="text-2xl font-black leading-tight text-gray-800 dark:text-white px-4">{question}</h3>
-      {userHasVoted && <p className="text-[10px] text-green-500 font-black mt-2 uppercase tracking-widest">You have voted</p>}
+      {userHasVoted && <p className="text-[10px] text-green-500 font-black mt-2 uppercase tracking-widest">Already Voted</p>}
       
-      {/* NAVIGASI BAWAH */}
-      <div className="absolute bottom-6 flex justify-between w-full px-8 opacity-40 font-black text-[10px] tracking-widest text-gray-500">
-        <div className="flex items-center gap-1"><MdArrowBack /> SKIP</div>
-        <div className="flex items-center gap-1">{userHasVoted ? "DONE" : "VOTE"} <MdArrowForward /></div>
+      {/* NAVIGASI BAWAH BERWARNA */}
+      <div className="absolute bottom-6 flex justify-between w-full px-10 font-black text-[10px] tracking-widest uppercase">
+        <div className="flex items-center gap-1 text-orange-500">
+            <MdArrowBack /> SKIP
+        </div>
+        <div className={`flex items-center gap-1 ${userHasVoted ? 'text-green-500' : 'text-blue-600 animate-pulse'}`}>
+            {userHasVoted ? "DONE" : "VOTE"} <MdArrowForward />
+        </div>
       </div>
     </motion.div>
   );
