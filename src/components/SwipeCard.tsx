@@ -44,6 +44,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
     };
   }, [usePaymaster]);
 
+  // Sesuai ABI: getPollInfo mengembalikan 6 nilai
   const { data: pollData } = useReadContract({
     address: address as `0x${string}`,
     abi: POLL_ABI,
@@ -63,6 +64,7 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
 
   if (!pollData) return null;
 
+  // Destruktur 6 nilai dari getPollInfo
   const [question, opt1, , opt2, , endTime] = pollData as any;
   const isEnded = endTime ? Number(endTime) < Date.now() / 1000 : false;
   const userHasVoted = Boolean(hasVoted);
@@ -74,7 +76,8 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
         const encodedData = encodeFunctionData({
             abi: POLL_ABI,
             functionName: "vote",
-            args: [confirmChoice]
+            // Sesuai ABI: vote menggunakan uint8
+            args: [confirmChoice] 
         });
         await sendCallsAsync({
             calls: [{ to: address as `0x${string}`, data: encodedData }],
@@ -96,14 +99,14 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
     <motion.div
       style={{ x, rotate, opacity, scale: index === 0 ? 1 : 0.95 }}
       drag={index === 0 && !showSelection && !confirmChoice && !isEnded ? "x" : false} 
-      className="absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border bg-white dark:bg-gray-900 flex flex-col items-center justify-center p-6 text-center"
+      className="absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border bg-white dark:bg-gray-900 flex flex-col items-center justify-center p-6 text-center z-10"
       onDragEnd={(e, info) => {
         if (info.offset.x > 100 && !userHasVoted && !isEnded) setShowSelection(true);
         else if (info.offset.x < -100) onSwipe("left");
         animate(x, 0, { duration: 0.2 });
       }}
     >
-      {isEnded && <div className="absolute top-4 right-4 bg-red-100 text-red-600 px-3 py-1 rounded-full text-[10px] font-black">VOTE ENDED</div>}
+      {isEnded && <div className="absolute top-4 right-4 bg-red-100 text-red-600 px-3 py-1 rounded-full text-[10px] font-black"><MdTimerOff className="inline mr-1" /> VOTE ENDED</div>}
       {confirmChoice && (
         <div className="absolute inset-0 z-50 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6">
             <p className="text-xl font-black mb-6">"{confirmChoice === 1 ? opt1 : opt2}"</p>
@@ -115,14 +118,14 @@ const SwipeCard = memo(function SwipeCard({ address, onSwipe, index }: Props) {
                     <span className="text-[10px] font-black tracking-widest uppercase">GAS SPONSORED <MdBolt className={usePaymaster ? "text-yellow-300 animate-pulse" : ""} /></span>
                 </div>
             )}
-            <button onClick={handleFinalVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-lg active:scale-95 transition-all">SIGN & VOTE</button>
-            <button onClick={() => setConfirmChoice(null)} className="mt-4 text-xs text-gray-400 font-bold">Back</button>
+            <button onClick={handleFinalVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-lg transition-all active:scale-95">SIGN & VOTE</button>
+            <button onClick={() => setConfirmChoice(null)} className="mt-4 text-xs text-gray-400 font-bold uppercase tracking-widest">Back</button>
         </div>
       )}
       <div className={`mb-4 p-4 rounded-full ${userHasVoted ? 'bg-green-100 text-green-600' : 'bg-gray-50 text-blue-500'}`}>
         {userHasVoted ? <MdCheckCircle className="text-4xl" /> : <MdHowToVote className="text-4xl" />}
       </div>
-      <h3 className="text-2xl font-black leading-tight">{question}</h3>
+      <h3 className="text-2xl font-black leading-tight text-gray-800 dark:text-white px-4">{question}</h3>
       {userHasVoted && <p className="text-[10px] text-green-500 font-black mt-2 uppercase tracking-widest">Already Voted</p>}
     </motion.div>
   );
