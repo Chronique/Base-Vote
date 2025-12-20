@@ -12,7 +12,6 @@ import { MdRefresh } from "react-icons/md";
 export default function QuestList() {
   const [globalIndex, setGlobalIndex] = useState(0);
 
-  // Ambil hanya 10 kartu sesuai permintaan agar ringan
   const { data: pollIds, isLoading, refetch } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
@@ -23,9 +22,7 @@ export default function QuestList() {
 
   const allPollIds = useMemo(() => {
     if (!pollIds || !Array.isArray(pollIds)) return [];
-    // 1. Filter ID 0 (padding dari kontrak)
-    // 2. Map ke Number
-    // 3. Reverse: ID terbesar (terbaru) jadi index 0 (paling atas)
+    // Filter ID 0 dan Reverse (ID 10 -> ID 1)
     return [...pollIds]
       .filter((id: any) => id !== 0n)
       .map((id: any) => Number(id))
@@ -43,7 +40,7 @@ export default function QuestList() {
 
   return (
     <div className="relative w-full h-[400px] flex flex-col items-center justify-center">
-      <button onClick={handleRefresh} className="absolute -top-12 right-4 p-2 text-gray-400 hover:text-blue-600 flex items-center gap-1 text-[10px] font-black uppercase transition-all">
+      <button onClick={handleRefresh} className="absolute -top-12 right-4 p-2 text-gray-400 hover:text-blue-600 flex items-center gap-1 text-[10px] font-black uppercase tracking-widest transition-all">
         <MdRefresh className="text-sm" /> Refresh
       </button>
 
@@ -52,20 +49,13 @@ export default function QuestList() {
           {allPollIds.length === 0 || globalIndex >= allPollIds.length ? (
             <CycleMeme key="cycle" onRefresh={handleRefresh} />
           ) : (
-            // Hanya render 2 kartu teratas untuk performa
+            // Render 2 kartu teratas: kartu index current di paling atas
             [0, 1].map((offset) => {
               const cardIdx = globalIndex + offset;
               if (cardIdx >= allPollIds.length) return null;
               const pid = allPollIds[cardIdx];
-              return (
-                <SwipeCard 
-                  key={pid} 
-                  pollId={pid} 
-                  onSwipe={handleSwipe} 
-                  index={offset} 
-                />
-              );
-            }).reverse() // Reverse stack agar index 0 (top card) berada paling depan secara visual
+              return <SwipeCard key={pid} pollId={pid} onSwipe={handleSwipe} index={offset} />;
+            }).reverse() 
           )}
         </AnimatePresence>
       </div>

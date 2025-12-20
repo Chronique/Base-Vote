@@ -23,7 +23,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   const [showSelection, setShowSelection] = useState(false);
   const [confirmChoice, setConfirmChoice] = useState<number | null>(null);
   const [isVotingLoading, setIsVotingLoading] = useState(false);
-  const [useGas, setUseGas] = useState(true); // Toggle State
+  const [useGas, setUseGas] = useState(true); // State untuk Toggle
 
   const { address: userAddress, chain } = useAccount();
   const { data: availableCapabilities } = useCapabilities({ account: userAddress });
@@ -110,35 +110,32 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   return (
     <motion.div
       style={{ x, rotate, opacity, scale: index === 0 ? 1 : 0.95, backgroundColor: activeBg }}
-      // Drag selalu diizinkan di index 0 agar bisa swipe kiri (skip) meskipun sudah vote
+      // Drag diaktifkan agar bisa swipe kiri (skip) meskipun sudah di-vote
       drag={index === 0 && !showSelection && !confirmChoice ? "x" : false} 
       dragConstraints={{ left: 0, right: 0 }}
       className={`absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border dark:border-gray-800 flex flex-col items-center justify-center p-6 text-center z-${10-index} overflow-hidden touch-none`}
       onDragEnd={async (e, info) => {
-        // SWIPE KANAN (VOTE)
         if (info.offset.x > 100) {
+            // Swipe Kanan (Vote) hanya jika belum vote/expired
             if (!isVotedDisplay && !isEnded) {
                 setShowSelection(true); 
                 animate(x, 0);
             } else {
                 animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
             }
-        } 
-        // SWIPE KIRI (SKIP) - Selalu bisa
-        else if (info.offset.x < -100) {
+        } else if (info.offset.x < -100) {
+            // Swipe Kiri (Skip) selalu diizinkan
             await animate(x, -1000, { duration: 0.3 });
             onSwipe("left");
-        } 
-        else {
+        } else {
             animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
         }
       }}
     >
-      {/* STEMPEL SUCCESS/EXPIRED */}
       <AnimatePresence>
           {(isEnded || isVotedDisplay) && (
               <motion.div 
-                initial={{ scale: 3, opacity: 0, rotate: -45 }}
+                initial={{ scale: 3, opacity: 0, rotate: -30 }}
                 animate={{ scale: 1, opacity: 1, rotate: -15 }}
                 className="absolute inset-0 flex items-center justify-center z-[70] pointer-events-none"
               >
@@ -160,18 +157,17 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
         <div className="absolute inset-0 z-[60] bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6 transition-all">
             {!confirmChoice ? (
                 <div className="w-full flex flex-col gap-3 px-4">
-                    <p className="text-[10px] font-black uppercase text-gray-400 mb-2 tracking-widest">Select Answer</p>
                     <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-bold rounded-2xl border border-blue-100">{opt1}</button>
                     <button onClick={() => setConfirmChoice(2)} className="w-full py-4 bg-pink-50 dark:bg-pink-900/20 text-pink-700 dark:text-pink-400 font-bold rounded-2xl border border-pink-100">{opt2}</button>
                     <button onClick={() => { setShowSelection(false); animate(x, 0); }} className="mt-4 text-[10px] font-black text-gray-400 uppercase">Cancel</button>
                 </div>
             ) : (
                 <div className="w-full flex flex-col items-center px-4">
-                    <p className="text-xl font-black mb-6 dark:text-white text-center leading-tight">"{confirmChoice === 1 ? opt1 : opt2}"</p>
+                    <p className="text-lg font-black mb-6 dark:text-white text-center">"{confirmChoice === 1 ? opt1 : opt2}"</p>
                     
-                    {/* TOGGLE GAS SPONSORED (Harus ada di sini) */}
+                    {/* TOGGLE GAS SPONSORED */}
                     <div className="mb-6 w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100">
-                        <div className="flex flex-col items-start">
+                        <div className="flex flex-col items-start text-left">
                             <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-1">
                                 <MdBolt className={useGas ? "text-yellow-400" : "text-gray-300"} /> Sponsored
                             </span>
@@ -182,16 +178,16 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                         </button>
                     </div>
 
-                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 disabled:opacity-50">
+                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl disabled:opacity-50 active:scale-95 transition-transform">
                         {isVotingLoading ? "SIGNING..." : "CONFIRM VOTE"}
                     </button>
-                    <button onClick={() => setConfirmChoice(null)} className="mt-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Change</button>
+                    <button onClick={() => setConfirmChoice(null)} className="mt-4 text-[10px] font-black text-gray-400 uppercase">Change</button>
                 </div>
             )}
         </div>
       )}
 
-      {/* BOTTOM LABELS */}
+      {/* Tombol bawah hanya muncul jika tidak sedang memilih */}
       {!showSelection && (
         <div className="absolute bottom-6 flex justify-between w-full px-10 font-black text-[10px] tracking-widest uppercase text-gray-400 z-10">
             <div className="flex items-center gap-1"><MdArrowBack /> SKIP</div>
