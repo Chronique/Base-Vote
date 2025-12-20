@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { useSendCalls, useCapabilities } from "wagmi/experimental";
 import { useWriteContract, useAccount } from "wagmi";
 import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants";
-import { MdAddCircle, MdCheckCircle, MdBolt, MdAccessTime } from "react-icons/md";
+import { MdCheckCircle, MdBolt, MdAccessTime } from "react-icons/md";
 import { encodeFunctionData } from "viem";
 import { Attribution } from "ox/erc8021";
 
@@ -15,12 +15,11 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [usePaymaster, setUsePaymaster] = useState(true);
 
-  // State Durasi: Default 1 Hari (86400 detik)
+  // STATE DURASI: Default 1 Hari (86400 detik)
   const [duration, setDuration] = useState(86400);
 
   const { address: userAddress, chain } = useAccount();
   const { data: availableCapabilities } = useCapabilities({ account: userAddress });
-
   const { sendCallsAsync } = useSendCalls(); 
   const { writeContractAsync } = useWriteContract();
 
@@ -30,21 +29,17 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
     return !!capabilitiesForChain?.["paymasterService"]?.supported && !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
   }, [availableCapabilities, chain]);
 
+  // FIX TYPE ERROR
   const capabilities = useMemo(() => {
-  // Pastikan URL ada sebelum dimasukkan
-  const paymasterUrl = process.env.NEXT_PUBLIC_PAYMASTER_URL;
-
-  if (usePaymaster && canUsePaymaster && paymasterUrl) {
-      return {
-        paymasterService: { url: paymasterUrl as string },
-        dataSuffix: Attribution.toDataSuffix({ codes: ["bc_2ivoo1oy"] })
-      };
-  }
-  
-  return {
-    dataSuffix: Attribution.toDataSuffix({ codes: ["bc_2ivoo1oy"] })
-  };
-}, [canUsePaymaster, usePaymaster]);
+    const paymasterUrl = process.env.NEXT_PUBLIC_PAYMASTER_URL;
+    if (usePaymaster && canUsePaymaster && paymasterUrl) {
+        return {
+          paymasterService: { url: paymasterUrl },
+          dataSuffix: Attribution.toDataSuffix({ codes: ["bc_2ivoo1oy"] })
+        };
+    }
+    return { dataSuffix: Attribution.toDataSuffix({ codes: ["bc_2ivoo1oy"] }) };
+  }, [canUsePaymaster, usePaymaster]);
 
   const handleCreate = async () => {
     if (!question || !opt1 || !opt2) return;
@@ -58,18 +53,27 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
 
         await sendCallsAsync({
             calls: [{ to: FACTORY_ADDRESS as `0x${string}`, data: encodedData }],
-            capabilities: capabilities
+            // Cast as any untuk menghindari error type strict dari viem
+            capabilities: capabilities as any
         });
         
         onSuccess();
+        // Reset Form
+        setQuestion("");
+        setOpt1("");
+        setOpt2("");
     } catch (err) {
-        await writeContractAsync({
-            address: FACTORY_ADDRESS as `0x${string}`,
-            abi: FACTORY_ABI,
-            functionName: "createPoll",
-            args: [question, opt1, opt2, BigInt(duration)]
-        });
-        onSuccess();
+        try {
+            await writeContractAsync({
+                address: FACTORY_ADDRESS as `0x${string}`,
+                abi: FACTORY_ABI,
+                functionName: "createPoll",
+                args: [question, opt1, opt2, BigInt(duration)]
+            });
+            onSuccess();
+        } catch (e) {
+            console.error(e);
+        }
     } finally {
         setIsSubmitting(false); 
     }
@@ -80,23 +84,24 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
       <div className="flex flex-col gap-4">
         <div>
             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Question</label>
-            <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="What's on your mind?" className="w-full mt-1 p-3 bg-gray-50 dark:bg-gray-800 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+            <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Poll Question" className="w-full mt-1 p-3 bg-gray-50 dark:bg-gray-800 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         
         <div className="grid grid-cols-2 gap-3">
-            <input value={opt1} onChange={(e) => setOpt1(e.target.value)} placeholder="Option 1" className="p-3 bg-blue-50/50 dark:bg-blue-900/10 border rounded-xl outline-none" />
-            <input value={opt2} onChange={(e) => setOpt2(e.target.value)} placeholder="Option 2" className="p-3 bg-pink-50/50 dark:bg-pink-900/10 border rounded-xl outline-none" />
+            <input value={opt1} onChange={(e) => setOpt1(e.target.value)} placeholder="Yes" className="p-3 bg-blue-50/50 dark:bg-blue-900/10 border rounded-xl outline-none" />
+            <input value={opt2} onChange={(e) => setOpt2(e.target.value)} placeholder="No" className="p-3 bg-pink-50/50 dark:bg-pink-900/10 border rounded-xl outline-none" />
         </div>
 
-        {/* SELEKTOR DURASI MANUAL */}
+        {/* SELEKTOR DURASI: 4 PILIHAN */}
         <div>
             <label className="text-xs font-bold text-gray-500 uppercase ml-1 flex items-center gap-1 mb-2">
                 <MdAccessTime /> Duration
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
                     { label: '1 Day', value: 86400 },
                     { label: '1 Week', value: 604800 },
+                    { label: '1 Month', value: 2592000 }, // 30 Hari
                     { label: '1 Year', value: 31536000 }
                 ].map((item) => (
                     <button
@@ -114,6 +119,7 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
             </div>
         </div>
 
+        {/* GAS SPONSORED: BIRU SOLID SAAT AKTIF */}
         {canUsePaymaster && (
             <div className="flex justify-center mt-2">
                 <div 
