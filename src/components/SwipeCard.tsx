@@ -102,7 +102,6 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
             await animate(x, 1000, { duration: 0.4 });
             onSwipe("right");
         }, 1500);
-
     } catch (e) {
         setIsVotingLoading(false);
     }
@@ -126,15 +125,14 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
         }
       }}
     >
-      {/* STEMPEL */}
       <AnimatePresence>
           {(isEnded || isVotedDisplay) && (
               <motion.div 
-                initial={{ scale: 3, opacity: 0, rotate: -45 }}
+                initial={{ scale: 3, opacity: 0, rotate: -30 }}
                 animate={{ scale: 1, opacity: 1, rotate: -15 }}
                 className="absolute inset-0 flex items-center justify-center z-[70] pointer-events-none"
               >
-                  <div className={`px-6 py-2 border-[10px] rounded-xl font-black text-5xl uppercase tracking-tighter ${isEnded ? 'border-red-600/40 text-red-600/50' : 'border-green-600/40 text-green-600/50'}`}>
+                  <div className={`px-6 py-2 border-[10px] rounded-xl font-black text-5xl uppercase ${isEnded ? 'border-red-600/40 text-red-600/50' : 'border-green-600/40 text-green-600/50'}`}>
                       {isEnded ? "EXPIRED" : "SUCCESS"}
                   </div>
               </motion.div>
@@ -148,17 +146,17 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
       <h3 className="text-2xl font-black leading-tight px-4 text-gray-900 dark:text-white">{question}</h3>
 
       {showSelection && !isVotedDisplay && (
-        <div className="absolute inset-0 z-50 bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in-95">
+        <div className="absolute inset-0 z-50 bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6">
             {!confirmChoice ? (
                 <div className="w-full flex flex-col gap-3">
-                    <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-bold rounded-2xl border border-blue-100 dark:border-blue-900">{opt1}</button>
-                    <button onClick={() => setConfirmChoice(2)} className="w-full py-4 bg-pink-50 dark:bg-pink-900/20 text-pink-700 dark:text-pink-400 font-bold rounded-2xl border border-pink-100 dark:border-pink-900">{opt2}</button>
+                    <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-bold rounded-2xl border border-blue-100">{opt1}</button>
+                    <button onClick={() => setConfirmChoice(2)} className="w-full py-4 bg-pink-50 dark:bg-pink-900/20 text-pink-700 dark:text-pink-400 font-bold rounded-2xl border border-pink-100">{opt2}</button>
                     <button onClick={() => { setShowSelection(false); animate(x, 0); }} className="mt-4 text-[10px] font-black text-gray-400 uppercase">Cancel</button>
                 </div>
             ) : (
                 <div className="w-full flex flex-col items-center">
-                    <p className="text-lg font-black mb-6 dark:text-white leading-tight">"{confirmChoice === 1 ? opt1 : opt2}"</p>
-                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 disabled:opacity-50">
+                    <p className="text-lg font-black mb-4 dark:text-white leading-tight">"{confirmChoice === 1 ? opt1 : opt2}"</p>
+                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl disabled:opacity-50">
                         {isVotingLoading ? "SIGNING..." : "CONFIRM VOTE"}
                     </button>
                     <button onClick={() => setConfirmChoice(null)} className="mt-4 text-[10px] font-black text-gray-400 uppercase">Change</button>
@@ -166,11 +164,6 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
             )}
         </div>
       )}
-
-      <div className="absolute bottom-6 flex justify-between w-full px-10 font-black text-[10px] tracking-widest uppercase text-gray-400">
-        <div className="flex items-center gap-1"><MdArrowBack /> SKIP</div>
-        <div className="flex items-center gap-1 text-blue-600 animate-pulse">VOTE <MdArrowForward /></div>
-      </div>
     </motion.div>
   );
 });
