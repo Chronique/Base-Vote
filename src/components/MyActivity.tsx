@@ -55,6 +55,13 @@ function PollItem({ pollId, filterMode }: { pollId: number, filterMode: "all" | 
   );
 }
 
+const { data: pollIds } = useReadContract({
+  address: FACTORY_ADDRESS,
+  abi: FACTORY_ABI,
+  functionName: "getPollsPaged",
+  args: [0n, 50n]
+});
+
 // --- MAIN COMPONENT ---
 export default function MyActivity() {
   const [filterMode, setFilterMode] = useState<"all" | "mine">("all");

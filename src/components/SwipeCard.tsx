@@ -18,6 +18,7 @@ interface Props {
 
 const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   const { resolvedTheme } = useTheme();
+  const [localVoted, setLocalVoted] = useState(false); 
   const [showSelection, setShowSelection] = useState(false);
   const [confirmChoice, setConfirmChoice] = useState<number | null>(null);
   const [isVotingLoading, setIsVotingLoading] = useState(false);
@@ -67,6 +68,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   const totalVotes = Number(votes1 || 0) + Number(votes2 || 0);
   const userHasVoted = Boolean(hasVoted);
   const isEnded = Number(endTime) < Date.now() / 1000;
+  const isVotedDisplay = userHasVoted || localVoted;
 
   const handleVote = async () => {
     if (!confirmChoice || isVotingLoading) return;
@@ -91,16 +93,21 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                 args: [BigInt(pollId), BigInt(confirmChoice)] 
             });
         }
-        
-        // JIKA SUKSES: Balikkan kartu ke tengah agar user melihat stempel VOTED
-        // Kartu tidak langsung hilang (onSwipe tidak dipanggil otomatis)
-        animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
+
+        // Tampilkan stempel SUCCESS segera
+        setLocalVoted(true);
+        setIsVotingLoading(false);
         setShowSelection(false);
         setConfirmChoice(null);
+
+        // Tunggu sebentar agar user lihat stempel, lalu lempar kartu
+        setTimeout(async () => {
+            await animate(x, 1000, { duration: 0.4 });
+            onSwipe("right");
+        }, 1500);
+
     } catch (e) {
-        console.error("Vote cancelled/failed", e);
-        setIsVotingLoading(false);
-    } finally {
+        console.error("Vote failed", e);
         setIsVotingLoading(false);
     }
   };
@@ -114,37 +121,30 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   return (
     <motion.div
       style={{ x, rotate, opacity, scale: index === 0 ? 1 : 0.95, backgroundColor: activeBg }}
-      // Sekarang drag diaktifkan meskipun sudah vote/expired agar bisa swipe kiri
       drag={index === 0 && !showSelection && !confirmChoice ? "x" : false} 
       dragConstraints={{ left: 0, right: 0 }}
       className={`absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border dark:border-gray-800 flex flex-col items-center justify-center p-6 text-center z-${10-index} overflow-hidden touch-none`}
       onDragEnd={async (e, info) => {
-        // SWIPE KANAN: Hanya jika belum vote dan belum berakhir
-        if (info.offset.x > 100 && !userHasVoted && !isEnded) {
+        if (info.offset.x > 100 && !isVotedDisplay && !isEnded) {
             setShowSelection(true); 
             animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
-        } 
-        // SWIPE KIRI: Selalu bisa (Skip kartu)
-        else if (info.offset.x < -100) {
+        } else if (info.offset.x < -100) {
             await animate(x, -1000, { duration: 0.3 });
             onSwipe("left");
-        } 
-        // Balik ke tengah jika swipe tidak cukup jauh atau swipe kanan dilarang
-        else {
+        } else {
             animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
         }
       }}
     >
-      {/* STEMPEL EXPIRED / VOTED */}
       <AnimatePresence>
-          {(isEnded || userHasVoted) && (
+          {(isEnded || isVotedDisplay) && (
               <motion.div 
-                initial={{ scale: 2, opacity: 0, rotate: -20 }}
+                initial={{ scale: 3, opacity: 0, rotate: -45 }}
                 animate={{ scale: 1, opacity: 1, rotate: -15 }}
-                className={`absolute inset-0 flex items-center justify-center z-40 pointer-events-none`}
+                className="absolute inset-0 flex items-center justify-center z-[70] pointer-events-none"
               >
-                  <div className={`px-8 py-3 border-8 rounded-2xl font-black text-4xl uppercase tracking-[10px] ${isEnded ? 'border-red-600/30 text-red-600/40' : 'border-green-600/30 text-green-600/40'}`}>
-                      {isEnded ? "EXPIRED" : "VOTED"}
+                  <div className={`px-6 py-2 border-[10px] rounded-xl font-black text-5xl uppercase tracking-tighter ${isEnded ? 'border-red-600/40 text-red-600/50' : 'border-green-600/40 text-green-600/50'}`}>
+                      {isEnded ? "EXPIRED" : "SUCCESS"}
                   </div>
               </motion.div>
           )}
@@ -154,8 +154,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
           <MdPeople className="text-sm" /> {totalVotes} Voters
       </div>
 
-      {/* SELECTION OVERLAY */}
-      {(showSelection || confirmChoice) && !userHasVoted && !isEnded && (
+      {(showSelection || confirmChoice) && !isVotedDisplay && !isEnded && (
         <div className="absolute inset-0 z-50 bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6">
             {!confirmChoice ? (
                 <div className="w-full flex flex-col gap-3 px-4">
@@ -167,7 +166,6 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
             ) : (
                 <div className="w-full flex flex-col items-center px-4">
                     <p className="text-xl font-black mb-6 dark:text-white leading-tight text-center">"{confirmChoice === 1 ? opt1 : opt2}"</p>
-                    
                     <div className="mb-6 w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
                         <div className="flex flex-col items-start">
                             <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-1">
@@ -179,7 +177,6 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                             <div className={`absolute top-1 left-1 bg-white w-3 h-3 rounded-full transition-transform ${useGas ? 'translate-x-5' : 'translate-x-0'}`} />
                         </button>
                     </div>
-
                     <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 disabled:opacity-50">
                         {isVotingLoading ? "SIGNING..." : "CONFIRM VOTE"}
                     </button>
@@ -193,8 +190,8 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
       
       <div className="absolute bottom-6 flex justify-between w-full px-10 font-black text-[10px] tracking-widest uppercase">
         <div className="text-orange-500 flex items-center gap-1"><MdArrowBack /> SKIP</div>
-        <div className={`${userHasVoted ? 'text-green-500' : 'text-blue-600 animate-pulse'} flex items-center gap-1`}>
-            {userHasVoted ? "DONE" : "VOTE"} <MdArrowForward />
+        <div className={`${isVotedDisplay ? 'text-green-500' : 'text-blue-600 animate-pulse'} flex items-center gap-1`}>
+            {isVotedDisplay ? "DONE" : "VOTE"} <MdArrowForward />
         </div>
       </div>
     </motion.div>
