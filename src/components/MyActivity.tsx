@@ -46,7 +46,7 @@ export default function MyActivity() {
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "getPollsPaged",
-    args: [0n, 50n] 
+    args: [0n, 20n] 
   });
 
   const formattedPollIds = useMemo(() => {
