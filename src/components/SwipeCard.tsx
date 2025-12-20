@@ -3,6 +3,7 @@
 import { useState, memo, useMemo } from "react";
 import { useReadContract, useAccount, useWriteContract } from "wagmi"; 
 import { useSendCalls, useCapabilities } from "wagmi/experimental"; 
+import { base } from "wagmi/chains";
 import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants";
 import { motion, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
 import { MdPeople, MdBolt, MdArrowBack, MdArrowForward } from "react-icons/md";
@@ -44,7 +45,8 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "getPollInfo",
-    args: [BigInt(pollId)]
+    args: [BigInt(pollId)],
+    chainId: base.id
   });
 
   const { data: hasVoted } = useReadContract({
@@ -52,16 +54,14 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
     abi: FACTORY_ABI,
     functionName: "hasVoted",
     args: userAddress ? [BigInt(pollId), userAddress] : undefined,
-    query: { enabled: !!userAddress }
+    query: { enabled: !!userAddress },
+    chainId: base.id
   });
 
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-10, 10]); 
   const opacity = useTransform(x, [-300, -150, 0, 150, 300], [0, 1, 1, 1, 0]);
-  
-  const bgLight = useTransform(x, [-200, 0, 200], ["#fee2e2", "#ffffff", "#dbeafe"]);
-  const bgDark = useTransform(x, [-200, 0, 200], ["#450a0a", "#111827", "#172554"]);
-  const activeBg = resolvedTheme === "dark" ? bgDark : bgLight;
+  const activeBg = resolvedTheme === "dark" ? "#111827" : "#ffffff";
 
   if (!pollData) return null;
   const [question, opt1, votes1, opt2, votes2, endTime] = pollData as any;
@@ -98,7 +98,6 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
         setShowSelection(false);
         setConfirmChoice(null);
 
-        // Beri waktu user lihat stempel SUCCESS
         setTimeout(async () => {
             await animate(x, 1000, { duration: 0.4 });
             onSwipe("right");
@@ -127,6 +126,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
         }
       }}
     >
+      {/* STEMPEL */}
       <AnimatePresence>
           {(isEnded || isVotedDisplay) && (
               <motion.div 
@@ -145,37 +145,31 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
           <MdPeople className="text-sm" /> {totalVotes} Voters
       </div>
 
-      {(showSelection || confirmChoice) && !isVotedDisplay && (
-        <div className="absolute inset-0 z-50 bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6">
+      <h3 className="text-2xl font-black leading-tight px-4 text-gray-900 dark:text-white">{question}</h3>
+
+      {showSelection && !isVotedDisplay && (
+        <div className="absolute inset-0 z-50 bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in-95">
             {!confirmChoice ? (
                 <div className="w-full flex flex-col gap-3">
-                    <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-bold rounded-2xl border border-blue-100">{opt1}</button>
-                    <button onClick={() => setConfirmChoice(2)} className="w-full py-4 bg-pink-50 dark:bg-pink-900/20 text-pink-700 dark:text-pink-400 font-bold rounded-2xl border border-pink-100">{opt2}</button>
+                    <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-bold rounded-2xl border border-blue-100 dark:border-blue-900">{opt1}</button>
+                    <button onClick={() => setConfirmChoice(2)} className="w-full py-4 bg-pink-50 dark:bg-pink-900/20 text-pink-700 dark:text-pink-400 font-bold rounded-2xl border border-pink-100 dark:border-pink-900">{opt2}</button>
                     <button onClick={() => { setShowSelection(false); animate(x, 0); }} className="mt-4 text-[10px] font-black text-gray-400 uppercase">Cancel</button>
                 </div>
             ) : (
                 <div className="w-full flex flex-col items-center">
-                    <p className="text-lg font-black mb-6 dark:text-white leading-tight text-center">"{confirmChoice === 1 ? opt1 : opt2}"</p>
-                    <div className="mb-6 w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100">
-                        <span className="text-[10px] font-black uppercase text-gray-400 flex items-center gap-1"><MdBolt /> Sponsored</span>
-                        <button onClick={() => setUseGas(!useGas)} className={`relative w-10 h-5 rounded-full ${useGas ? 'bg-blue-600' : 'bg-gray-300'}`}>
-                            <div className={`absolute top-1 left-1 bg-white w-3 h-3 rounded-full transition-transform ${useGas ? 'translate-x-5' : 'translate-x-0'}`} />
-                        </button>
-                    </div>
-                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl disabled:opacity-50">
+                    <p className="text-lg font-black mb-6 dark:text-white leading-tight">"{confirmChoice === 1 ? opt1 : opt2}"</p>
+                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 disabled:opacity-50">
                         {isVotingLoading ? "SIGNING..." : "CONFIRM VOTE"}
                     </button>
+                    <button onClick={() => setConfirmChoice(null)} className="mt-4 text-[10px] font-black text-gray-400 uppercase">Change</button>
                 </div>
             )}
         </div>
       )}
 
-      <h3 className="text-2xl font-black leading-tight px-4 text-gray-900 dark:text-white z-10">{question}</h3>
-      <div className="absolute bottom-6 flex justify-between w-full px-10 font-black text-[10px] tracking-widest uppercase">
-        <div className="text-orange-500 flex items-center gap-1"><MdArrowBack /> SKIP</div>
-        <div className={`${isVotedDisplay ? 'text-green-500' : 'text-blue-600 animate-pulse'} flex items-center gap-1`}>
-            {isVotedDisplay ? "DONE" : "VOTE"} <MdArrowForward />
-        </div>
+      <div className="absolute bottom-6 flex justify-between w-full px-10 font-black text-[10px] tracking-widest uppercase text-gray-400">
+        <div className="flex items-center gap-1"><MdArrowBack /> SKIP</div>
+        <div className="flex items-center gap-1 text-blue-600 animate-pulse">VOTE <MdArrowForward /></div>
       </div>
     </motion.div>
   );
