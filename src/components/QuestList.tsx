@@ -22,19 +22,18 @@ export default function QuestList() {
 
   const allPollIds = useMemo(() => {
     if (!pollIds || !Array.isArray(pollIds)) return [];
-    // FIX: Tambahkan .reverse() agar poll TERBARU muncul duluan
-    // Dari [0, 1, 2] (Lama->Baru) menjadi [2, 1, 0] (Baru->Lama)
-    return pollIds.map(id => Number(id)).reverse(); 
+    // FIX: HAPUS .reverse() DI SINI
+    // Karena Smart Contract sudah mengirim urutan [Baru, Lama, ...]
+    return pollIds.map(id => Number(id)); 
   }, [pollIds]);
 
   const handleRefresh = () => {
-    // Reset logika
     if (globalIndex >= allPollIds.length) {
       setGlobalIndex(0); 
     }
     setBatchCounter(0);
     setIsCycleActive(false); 
-    refetch(); // Ambil data baru jika ada
+    refetch();
   };
 
   const handleSwipe = () => {
@@ -44,7 +43,6 @@ export default function QuestList() {
     setGlobalIndex(nextIndex);
     setBatchCounter(nextBatch);
 
-    // Trigger CycleMeme setelah 10 kartu atau jika kartu habis
     if (nextBatch >= 10 || nextIndex >= allPollIds.length) {
       setTimeout(() => setIsCycleActive(true), 600); 
     }
@@ -61,10 +59,8 @@ export default function QuestList() {
             <CycleMeme onRefresh={handleRefresh} />
           </div>
         ) : (
-          /* Render Kartu */
           [0, 1].map((offset) => {
             const cardIdx = globalIndex + offset;
-            // Cek apakah index valid
             if (cardIdx >= allPollIds.length) return null;
             
             const pid = allPollIds[cardIdx];
@@ -77,7 +73,7 @@ export default function QuestList() {
                 index={offset} 
               />
             );
-          }).reverse() // Reverse ini untuk STACKING (Kartu depan di atas layer belakang)
+          }).reverse() // JANGAN HAPUS INI (Ini untuk visual tumpukan kartu)
         )}
       </AnimatePresence>
     </div>
