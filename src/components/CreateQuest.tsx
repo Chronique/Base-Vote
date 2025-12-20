@@ -103,10 +103,21 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
       </div>
 
       <div className="grid grid-cols-4 gap-2">
-          {[ {l: '1D', v: 86400}, {l: '1W', v: 604800}, {l: '1M', v: 2592000} ].map((d) => (
-              <button key={d.v} onClick={() => setDuration(d.v)} className={`py-2 text-[10px] font-black rounded-lg border transition-all ${duration === d.v ? 'bg-blue-600 border-blue-600 text-white' : 'bg-gray-50 text-gray-400'}`}>{d.l}</button>
-          ))}
-      </div>
+    {[ 
+        {l: '1D', v: 86400}, 
+        {l: '1W', v: 604800}, 
+        {l: '1M', v: 2592000},
+        {l: '1Y', v: 31536000} // Tambahkan ini kembali
+    ].map((d) => (
+        <button 
+            key={d.v} 
+            onClick={() => setDuration(d.v)} 
+            className={`py-2 text-[10px] font-black rounded-lg border transition-all ${duration === d.v ? 'bg-blue-600 border-blue-600 text-white' : 'bg-gray-50 text-gray-400'}`}
+        >
+            {d.l}
+        </button>
+    ))}
+</div>
 
       {canUsePaymaster && (
           <div className="flex justify-center mt-2">

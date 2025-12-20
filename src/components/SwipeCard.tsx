@@ -92,12 +92,15 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
             });
         }
         
-        // JIKA SUKSES: Kartu baru terlempar
-        await animate(x, 1000, { duration: 0.3 });
-        onSwipe("right");
+        // JIKA SUKSES: Balikkan kartu ke tengah agar user melihat stempel VOTED
+        // Kartu tidak langsung hilang (onSwipe tidak dipanggil otomatis)
+        animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
+        setShowSelection(false);
+        setConfirmChoice(null);
     } catch (e) {
-        console.error("Transaction cancelled/failed", e);
-        // JIKA GAGAL: Kartu tetap di posisi, reset loading
+        console.error("Vote cancelled/failed", e);
+        setIsVotingLoading(false);
+    } finally {
         setIsVotingLoading(false);
     }
   };
@@ -111,17 +114,23 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   return (
     <motion.div
       style={{ x, rotate, opacity, scale: index === 0 ? 1 : 0.95, backgroundColor: activeBg }}
-      drag={index === 0 && !showSelection && !confirmChoice && !isEnded && !userHasVoted ? "x" : false} 
+      // Sekarang drag diaktifkan meskipun sudah vote/expired agar bisa swipe kiri
+      drag={index === 0 && !showSelection && !confirmChoice ? "x" : false} 
       dragConstraints={{ left: 0, right: 0 }}
-      className={`absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border dark:border-gray-800 flex flex-col items-center justify-center p-6 text-center z-${10-index} overflow-hidden touch-none transition-shadow`}
+      className={`absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border dark:border-gray-800 flex flex-col items-center justify-center p-6 text-center z-${10-index} overflow-hidden touch-none`}
       onDragEnd={async (e, info) => {
+        // SWIPE KANAN: Hanya jika belum vote dan belum berakhir
         if (info.offset.x > 100 && !userHasVoted && !isEnded) {
             setShowSelection(true); 
             animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
-        } else if (info.offset.x < -100) {
+        } 
+        // SWIPE KIRI: Selalu bisa (Skip kartu)
+        else if (info.offset.x < -100) {
             await animate(x, -1000, { duration: 0.3 });
             onSwipe("left");
-        } else {
+        } 
+        // Balik ke tengah jika swipe tidak cukup jauh atau swipe kanan dilarang
+        else {
             animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
         }
       }}
@@ -150,7 +159,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
         <div className="absolute inset-0 z-50 bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6">
             {!confirmChoice ? (
                 <div className="w-full flex flex-col gap-3 px-4">
-                    <p className="text-[10px] font-black uppercase text-gray-400 mb-2 tracking-widest text-center">Select Answer</p>
+                    <p className="text-[10px] font-black uppercase text-gray-400 mb-2 tracking-widest">Select Answer</p>
                     <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900 text-blue-700 dark:text-blue-400 font-bold rounded-2xl active:scale-95">{opt1}</button>
                     <button onClick={() => setConfirmChoice(2)} className="w-full py-4 bg-pink-50 dark:bg-pink-900/20 border border-pink-100 dark:border-pink-900 text-pink-700 dark:text-pink-400 font-bold rounded-2xl active:scale-95">{opt2}</button>
                     <button onClick={handleCancelSelection} className="mt-4 text-[10px] font-black text-gray-400 uppercase">Cancel</button>

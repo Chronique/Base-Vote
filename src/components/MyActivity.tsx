@@ -1,27 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAccount, useReadContract } from "wagmi";
-import { FACTORY_ABI, FACTORY_ADDRESS, POLL_ABI } from "~/app/constants";
+import { FACTORY_ABI, FACTORY_ADDRESS } from "~/app/constants";
 import { MdPublic, MdHistory } from "react-icons/md";
 
-// --- COMPONENT ITEM (Versi Ringan Tanpa onClick) ---
-function PollItem({ address, filterMode }: { address: string, filterMode: "all" | "mine" }) {
+// --- COMPONENT ITEM ---
+function PollItem({ pollId, filterMode }: { pollId: number, filterMode: "all" | "mine" }) {
   const { address: userAddress } = useAccount();
 
-  // 1. Ambil Data Poll
+  // 1. Ambil Data Poll berdasarkan ID
   const { data: pollData } = useReadContract({
-    address: address as `0x${string}`,
-    abi: POLL_ABI,
+    address: FACTORY_ADDRESS as `0x${string}`,
+    abi: FACTORY_ABI,
     functionName: "getPollInfo",
+    args: [BigInt(pollId)]
   });
 
-  // 2. Cek Status Vote User
+  // 2. Cek Status Vote User berdasarkan ID dan Alamat User
   const { data: hasVoted } = useReadContract({
-    address: address as `0x${string}`,
-    abi: POLL_ABI,
+    address: FACTORY_ADDRESS as `0x${string}`,
+    abi: FACTORY_ABI,
     functionName: "hasVoted",
-    args: userAddress ? [userAddress] : undefined,
+    args: userAddress ? [BigInt(pollId), userAddress] : undefined,
+    query: { enabled: !!userAddress }
   });
 
   // LOGIKA FILTER: 
@@ -29,8 +31,8 @@ function PollItem({ address, filterMode }: { address: string, filterMode: "all" 
   if (!pollData) return null;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [question, , count1, , count2] = pollData as any;
-  const total = Number(count1) + Number(count2);
+  const [question, , votes1, , votes2] = pollData as any;
+  const total = Number(votes1 || 0) + Number(votes2 || 0);
 
   return (
     <div 
@@ -42,10 +44,10 @@ function PollItem({ address, filterMode }: { address: string, filterMode: "all" 
       <div className="mt-2 flex justify-between text-xs text-gray-500 dark:text-gray-400">
         <span>Total Votes: <span className="font-bold text-blue-600">{total}</span></span>
         
-        {/* Tampilkan badge hanya jika di tab My History */}
-        {filterMode === 'mine' && (
+        {/* Tampilkan badge jika user sudah vote */}
+        {hasVoted && (
             <span className="text-[10px] bg-green-100 dark:bg-green-900/30 text-green-600 px-2 py-0.5 rounded font-bold">
-                You Voted ✅
+                {filterMode === 'mine' ? "Voted ✅" : "You Voted"}
             </span>
         )}
       </div>
@@ -55,61 +57,68 @@ function PollItem({ address, filterMode }: { address: string, filterMode: "all" 
 
 // --- MAIN COMPONENT ---
 export default function MyActivity() {
-  // Hapus state selectedPoll karena tidak ada modal lagi
   const [filterMode, setFilterMode] = useState<"all" | "mine">("all");
 
-  const { data: allPolls, isLoading, refetch } = useReadContract({
+  // Mengambil 50 poll terbaru menggunakan getPollsPaged
+  const { data: pollIds, isLoading, refetch } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
-    functionName: "getAllPolls",
+    functionName: "getPollsPaged",
+    args: [0n, 50n] 
   });
 
-  if (isLoading) return <div className="text-center mt-10 animate-pulse text-gray-400">Loading blockchain data...</div>;
-  
-  const polls = (allPolls as string[] || []).slice().reverse();
+  const formattedPollIds = useMemo(() => {
+    if (!pollIds || !Array.isArray(pollIds)) return [];
+    // Balik urutan agar yang terbaru muncul di atas
+    return [...pollIds].reverse();
+  }, [pollIds]);
+
+  if (isLoading) return <div className="text-center mt-10 animate-pulse text-gray-400 font-bold uppercase text-[10px] tracking-widest">Loading blockchain data...</div>;
 
   return (
     <div className="pb-20">
       
       {/* HEADER */}
       <div className="flex justify-between items-center mb-4 px-1">
-        <h2 className="text-xl font-black text-gray-800 dark:text-white">Activity</h2>
-        <button onClick={() => refetch()} className="text-xs text-blue-600 font-bold hover:underline">
+        <h2 className="text-xl font-black text-gray-800 dark:text-white uppercase tracking-tight">Activity</h2>
+        <button onClick={() => refetch()} className="text-[10px] text-blue-600 font-black uppercase tracking-widest hover:underline">
             Refresh
         </button>
       </div>
 
       {/* TABS SWITCHER */}
-      <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg mb-6">
+      <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl mb-6 shadow-inner">
         <button 
             onClick={() => setFilterMode("all")}
-            className={`flex-1 py-2 rounded-md text-xs font-bold flex items-center justify-center gap-1 transition-all ${filterMode === "all" ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600" : "text-gray-400"}`}
+            className={`flex-1 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${filterMode === "all" ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600" : "text-gray-400"}`}
         >
-            <MdPublic /> All Polls
+            <MdPublic className="text-sm" /> All Polls
         </button>
         <button 
             onClick={() => setFilterMode("mine")}
-            className={`flex-1 py-2 rounded-md text-xs font-bold flex items-center justify-center gap-1 transition-all ${filterMode === "mine" ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600" : "text-gray-400"}`}
+            className={`flex-1 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${filterMode === "mine" ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600" : "text-gray-400"}`}
         >
-            <MdHistory /> My History
+            <MdHistory className="text-sm" /> My History
         </button>
       </div>
       
       {/* LIST DATA */}
-      {polls.length === 0 ? (
-          <div className="text-center mt-10 text-gray-400 text-sm">No polls found.</div>
+      {formattedPollIds.length === 0 ? (
+          <div className="text-center mt-10 text-gray-400 text-[10px] font-bold uppercase tracking-widest italic">No polls found.</div>
       ) : (
-          polls.map((pollAddr) => (
-            <PollItem 
-                key={pollAddr} 
-                address={pollAddr} 
-                filterMode={filterMode} 
-            />
-          ))
+          <div className="flex flex-col">
+            {formattedPollIds.map((id) => (
+                <PollItem 
+                    key={id.toString()} 
+                    pollId={Number(id)} 
+                    filterMode={filterMode} 
+                />
+            ))}
+          </div>
       )}
 
-      {filterMode === "mine" && (
-          <p className="text-center text-[10px] text-gray-300 mt-4">Showing polls you voted on.</p>
+      {filterMode === "mine" && formattedPollIds.length > 0 && (
+          <p className="text-center text-[10px] font-black text-gray-300 mt-4 uppercase tracking-widest">End of History</p>
       )}
 
     </div>
