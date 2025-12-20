@@ -140,7 +140,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                 className="absolute inset-0 flex items-center justify-center z-[70] pointer-events-none"
               >
                   <div className={`px-6 py-2 border-[10px] rounded-xl font-black text-5xl uppercase tracking-tighter ${isEnded ? 'border-red-600/40 text-red-600/50' : 'border-green-600/40 text-green-600/50'}`}>
-                      {isEnded ? "EXPIRED" : "SUCCESS"}
+                      {isEnded ? "EXPIRED" : "VOTED"}
                   </div>
               </motion.div>
           )}
