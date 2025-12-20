@@ -16,6 +16,7 @@ interface Props {
 }
 
 const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
+  const [showSelection, setShowSelection] = useState(false); // State untuk memicu menu vote
   const [confirmChoice, setConfirmChoice] = useState<number | null>(null);
   const [isVotingLoading, setIsVotingLoading] = useState(false);
 
@@ -84,43 +85,54 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   return (
     <motion.div
       style={{ x, rotate, opacity, scale: index === 0 ? 1 : 0.95 }}
-      drag={index === 0 && !confirmChoice && !isEnded ? "x" : false} 
+      drag={index === 0 && !showSelection && !confirmChoice && !isEnded ? "x" : false} 
       className={`absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border bg-white dark:bg-gray-900 flex flex-col items-center justify-center p-6 text-center z-${20-index} overflow-hidden`}
       onDragEnd={(e, info) => {
-        if (info.offset.x > 80 && !userHasVoted && !isEnded) animate(x, 150);
-        else if (info.offset.x < -80) onSwipe("left");
-        else animate(x, 0);
+        // PERBAIKAN: Swipe kanan memicu state showSelection
+        if (info.offset.x > 80 && !userHasVoted && !isEnded) {
+            setShowSelection(true); 
+            animate(x, 150);
+        } else if (info.offset.x < -80) {
+            onSwipe("left");
+        } else {
+            animate(x, 0);
+        }
       }}
     >
-      {(x.get() > 50 || confirmChoice) && !userHasVoted && !isEnded && (
-        <div className="absolute inset-0 z-50 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6">
+      {(showSelection || confirmChoice) && !userHasVoted && !isEnded && (
+        <div className="absolute inset-0 z-50 bg-white/95 dark:bg-gray-900/95 flex flex-col items-center justify-center p-6 animate-in fade-in duration-200">
             {!confirmChoice ? (
-                <div className="w-full flex flex-col gap-3 px-4">
+                <div className="w-full flex flex-col gap-3 px-4 text-center">
+                    <p className="text-[10px] font-black uppercase text-gray-400 mb-2 tracking-widest">Pilih Jawaban</p>
                     <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 border border-blue-200 text-blue-700 font-bold rounded-xl active:scale-95">{opt1}</button>
                     <button onClick={() => setConfirmChoice(2)} className="w-full py-4 bg-pink-50 border border-pink-200 text-pink-700 font-bold rounded-xl active:scale-95">{opt2}</button>
-                    <button onClick={() => animate(x, 0)} className="mt-2 text-[10px] font-black text-gray-400 uppercase">Batal</button>
+                    <button onClick={() => { setShowSelection(false); animate(x, 0); }} className="mt-2 text-[10px] font-black text-gray-400 uppercase">Batal</button>
                 </div>
             ) : (
                 <div className="w-full flex flex-col items-center px-4">
                     <p className="text-xl font-black mb-6">"{confirmChoice === 1 ? opt1 : opt2}"</p>
+                    
+                    {/* TOMBOL GAS SPONSORED MENYALA */}
                     <div className="mb-6 flex items-center gap-2 px-5 py-2 rounded-full bg-blue-600 text-white border border-blue-400 shadow-lg">
-                        <span className="text-[10px] font-black uppercase flex items-center gap-1">
+                        <span className="text-[10px] font-black uppercase flex items-center gap-1 tracking-widest">
                             <MdBolt className="text-yellow-300 animate-pulse" /> GAS SPONSORED
                         </span>
                     </div>
-                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl active:scale-95 shadow-xl transition-all">
+
+                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all">
                         {isVotingLoading ? "SIGNING..." : "SIGN & VOTE"}
                     </button>
-                    <button onClick={() => setConfirmChoice(null)} className="mt-4 text-xs font-bold text-gray-400 underline">Ganti Pilihan</button>
+                    <button onClick={() => setConfirmChoice(null)} className="mt-4 text-xs font-bold text-gray-400 underline decoration-2 underline-offset-4">Ganti Pilihan</button>
                 </div>
             )}
         </div>
       )}
 
-      {isEnded && <div className="absolute top-4 right-4 bg-red-100 text-red-600 px-3 py-1 rounded-full text-[10px] font-black">EXPIRED</div>}
+      {isEnded && <div className="absolute top-4 right-4 bg-red-100 text-red-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Expired</div>}
       <h3 className="text-2xl font-black leading-tight px-4 text-gray-800 dark:text-white">{question}</h3>
       {userHasVoted && <p className="text-[10px] text-green-500 font-black mt-2 uppercase tracking-widest">Already Voted</p>}
       
+      {/* NAVIGASI BERWARNA SESUAI REQUEST */}
       <div className="absolute bottom-6 flex justify-between w-full px-10 font-black text-[10px] tracking-widest uppercase">
         <div className="text-orange-500 flex items-center gap-1"><MdArrowBack /> SKIP</div>
         <div className={`${userHasVoted ? 'text-green-500' : 'text-blue-600 animate-pulse'} flex items-center gap-1`}>

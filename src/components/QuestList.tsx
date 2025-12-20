@@ -4,13 +4,12 @@ import { useState, useMemo } from "react";
 import { useReadContract } from "wagmi";
 import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants";
 import SwipeCard from "./SwipeCard";
-import CycleMeme from "./CycleMeme"; // Memanggil komponen perfect milikmu
+import CycleMeme from "./CycleMeme"; 
 import { AnimatePresence } from "framer-motion";
 
 export default function QuestList() {
   const [globalIndex, setGlobalIndex] = useState(0);
   const [batchCounter, setBatchCounter] = useState(0);
-  // State khusus untuk menampilkan CycleMeme
   const [isCycleActive, setIsCycleActive] = useState(false);
 
   const { data: pollIds, isLoading } = useReadContract({
@@ -25,13 +24,12 @@ export default function QuestList() {
     return pollIds.map(id => Number(id)); 
   }, [pollIds]);
 
-  // Fungsi yang dipanggil saat user selesai klik "LFG" di CycleMeme
   const handleRefresh = () => {
     if (globalIndex >= allPollIds.length) {
-      setGlobalIndex(0); // Balik ke awal jika sudah habis
+      setGlobalIndex(0); 
     }
     setBatchCounter(0);
-    setIsCycleActive(false); // Sembunyikan CycleMeme, balik ke kartu
+    setIsCycleActive(false); 
   };
 
   const handleSwipe = () => {
@@ -41,10 +39,9 @@ export default function QuestList() {
     setGlobalIndex(nextIndex);
     setBatchCounter(nextBatch);
 
-    // TRIGGER CYCLE MEME:
-    // Jika sudah 10 kartu ATAU daftar sudah habis
+    // MASUK KE CYCLE MEME SETELAH VOTE/SKIP KARTU TERAKHIR ATAU KE-10
     if (nextBatch >= 10 || nextIndex >= allPollIds.length) {
-      setTimeout(() => setIsCycleActive(true), 500); // Beri jeda animasi swipe selesai
+      setTimeout(() => setIsCycleActive(true), 600); 
     }
   };
 
@@ -56,11 +53,10 @@ export default function QuestList() {
       <AnimatePresence mode="wait">
         {isCycleActive ? (
           <div className="w-full flex justify-center py-4">
-            {/* Menggunakan CycleMeme milikmu tanpa modifikasi */}
+            {/* Mengarahkan ke komponen CycleMeme perfect milikmu */}
             <CycleMeme onRefresh={handleRefresh} />
           </div>
         ) : (
-          /* Render kartu hanya jika CycleMeme tidak aktif */
           [0, 1].map((offset) => {
             const cardIdx = globalIndex + offset;
             if (cardIdx >= allPollIds.length) return null;
