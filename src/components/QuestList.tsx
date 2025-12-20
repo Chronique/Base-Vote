@@ -39,21 +39,19 @@ export default function QuestList() {
     setGlobalIndex(nextIndex);
     setBatchCounter(nextBatch);
 
-    // MASUK KE CYCLE MEME SETELAH VOTE/SKIP KARTU TERAKHIR ATAU KE-10
     if (nextBatch >= 10 || nextIndex >= allPollIds.length) {
       setTimeout(() => setIsCycleActive(true), 600); 
     }
   };
 
   if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-bold">Loading Cards...</div>;
-  if (allPollIds.length === 0) return <div className="h-64 flex items-center justify-center text-gray-400 font-bold">No Cards Available.</div>;
+  if (allPollIds.length === 0) return <div className="h-64 flex items-center justify-center text-gray-400 font-bold italic">No cards available.</div>;
 
   return (
     <div className="relative w-full h-[400px] flex items-center justify-center perspective-1000">
       <AnimatePresence mode="wait">
         {isCycleActive ? (
           <div className="w-full flex justify-center py-4">
-            {/* Mengarahkan ke komponen CycleMeme perfect milikmu */}
             <CycleMeme onRefresh={handleRefresh} />
           </div>
         ) : (
