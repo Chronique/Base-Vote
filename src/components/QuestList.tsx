@@ -7,69 +7,94 @@ import SwipeCard from "./SwipeCard";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function QuestList() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [cycleCount, setCycleCount] = useState(0);
+  // globalIndex: Posisi kartu saat ini di seluruh daftar polls
+  const [globalIndex, setGlobalIndex] = useState(0);
+  // batchCounter: Menghitung sudah berapa kartu yang di-swipe dalam sesi ini (maks 10)
+  const [batchCounter, setBatchCounter] = useState(0);
 
-  // Sesuai ABI: Memanggil "getAllPolls" untuk mendapatkan address[]
-  const { data: pollAddresses, isError, isLoading } = useReadContract({
+  const { data: pollAddresses, isError } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
-    functionName: "getAllPolls", 
+    functionName: "allPolls", 
   });
 
-  const activePolls = useMemo(() => {
+  // Mengambil semua alamat poll dan membaliknya (terbaru di atas)
+  const allPolls = useMemo(() => {
     if (!pollAddresses || !Array.isArray(pollAddresses)) return [];
-    // Balik urutan: Poll terbaru muncul pertama
-    return [...pollAddresses].reverse().slice(0, 10);
+    return [...pollAddresses].reverse();
   }, [pollAddresses]);
 
   const handleSwipe = () => {
-    if (currentIndex < activePolls.length) {
-      setCurrentIndex((prev) => prev + 1);
-    } else {
-      // Masuk ke Cycle Meme setelah 10 kartu
-      setCurrentIndex(0);
-      setCycleCount((prev) => prev + 1);
-    }
+    if (allPolls.length === 0) return;
+
+    // Geser ke kartu berikutnya di daftar global (dengan reset ke 0 jika habis)
+    setGlobalIndex((prev) => (prev + 1) % allPolls.length);
+    
+    // Tambah hitungan batch
+    setBatchCounter((prev) => prev + 1);
   };
 
-  if (isLoading) return <div className="h-64 flex items-center justify-center font-bold text-blue-500 animate-pulse">Loading Polls...</div>;
+  const handleMemeClick = () => {
+    // Reset hitungan batch agar kartu muncul kembali
+    setBatchCounter(0);
+  };
+
+  // KONDISI TAMPIL MEME CARD:
+  // 1. Sudah swipe 10 kartu.
+  // 2. ATAU sudah mencapai kartu terakhir (globalIndex balik ke 0 dan batchCounter > 0).
+  const showMemeCard = batchCounter === 10 || (batchCounter > 0 && globalIndex === 0);
 
   if (isError || !pollAddresses || (Array.isArray(pollAddresses) && pollAddresses.length === 0)) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-gray-400 font-bold">
         <p>No polls available yet.</p>
-        <p className="text-[10px] mt-2 opacity-50 italic">Factory: {FACTORY_ADDRESS.slice(0,6)}...</p>
       </div>
     );
   }
-
-  const showMemeCard = currentIndex === activePolls.length;
 
   return (
     <div className="relative w-full h-80 flex items-center justify-center perspective-1000">
       <AnimatePresence mode="popLayout">
         {showMemeCard ? (
           <motion.div 
-            key={`meme-${cycleCount}`}
+            key="meme-card"
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="absolute w-full max-w-sm h-80 rounded-3xl shadow-xl bg-blue-600 flex flex-col items-center justify-center p-6 text-white text-center cursor-pointer"
-            onClick={handleSwipe}
+            exit={{ x: 500, opacity: 0 }}
+            className="absolute w-full max-w-sm h-80 rounded-3xl shadow-xl bg-blue-600 flex flex-col items-center justify-center p-6 text-white text-center cursor-pointer z-50"
+            onClick={handleMemeClick}
           >
-            <h2 className="text-4xl font-black mb-2 uppercase italic">RELOAD!</h2>
+            <h2 className="text-4xl font-black mb-2 uppercase italic">
+              {globalIndex === 0 ? "START OVER!" : "NEXT BATCH!"}
+            </h2>
+            <p className="text-sm font-bold opacity-80 mb-4">
+              {globalIndex === 0 
+                ? "You've reached the end. Back to the beginning!" 
+                : "10 cards done! Ready for more?"}
+            </p>
             <div className="text-6xl my-4">🚀</div>
-            <p className="text-[10px] font-black tracking-widest uppercase underline">Tap to Continue</p>
+            <p className="mt-4 text-[10px] font-black tracking-[0.3em] uppercase underline decoration-2 underline-offset-4">
+              Tap to Continue
+            </p>
           </motion.div>
         ) : (
-          activePolls.slice(currentIndex, currentIndex + 2).reverse().map((addr, i) => (
-            <SwipeCard 
-              key={addr as string} 
-              address={addr as string} 
-              onSwipe={handleSwipe} 
-              index={i} 
-            />
-          ))
+          /* Merender kartu berdasarkan globalIndex saat ini. 
+             Kita merender 2 kartu (current & next) agar efek tumpukan tetap terlihat.
+          */
+          [0, 1].map((offset) => {
+            const cardIdx = (globalIndex + offset) % allPolls.length;
+            const addr = allPolls[cardIdx];
+            
+            // Kita balik urutan map agar kartu index 0 (top) berada di atas secara z-index
+            return (
+              <SwipeCard 
+                key={`${addr}-${cardIdx}`} 
+                address={addr as string} 
+                onSwipe={handleSwipe} 
+                index={offset} 
+              />
+            );
+          }).reverse()
         )}
       </AnimatePresence>
     </div>
