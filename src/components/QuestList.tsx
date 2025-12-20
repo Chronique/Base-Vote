@@ -30,7 +30,7 @@ export default function QuestList() {
     }
     setBatchCounter(0);
     setIsCycleActive(false); 
-    refetch();
+    refetch(); // Update data terbaru
   };
 
   const handleSwipe = () => {
@@ -40,13 +40,14 @@ export default function QuestList() {
     setGlobalIndex(nextIndex);
     setBatchCounter(nextBatch);
 
+    // MASUK KE CYCLE MEME SETIAP 10 KARTU ATAU JIKA HABIS
     if (nextBatch >= 10 || nextIndex >= allPollIds.length) {
       setTimeout(() => setIsCycleActive(true), 600); 
     }
   };
 
-  if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-bold italic animate-pulse text-xs uppercase tracking-widest">Loading Deck...</div>;
-  if (allPollIds.length === 0) return <div className="h-64 flex items-center justify-center text-gray-400 font-bold italic text-xs uppercase tracking-widest">No cards available.</div>;
+  if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-bold italic animate-pulse tracking-widest uppercase">Loading deck...</div>;
+  if (allPollIds.length === 0) return <div className="h-64 flex items-center justify-center text-gray-500 font-bold uppercase tracking-widest italic">No cards yet.</div>;
 
   return (
     <div className="relative w-full h-[400px] flex items-center justify-center perspective-1000">
