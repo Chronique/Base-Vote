@@ -24,9 +24,9 @@ export default function QuestList() {
   const allPollIds = useMemo(() => {
     if (!pollIds || !Array.isArray(pollIds)) return [];
     // 1. Filter ID 0 (padding dari kontrak)
-    // 2. Reverse agar ID terbesar (terbaru) di index 0 (paling atas)
-    // 3. ID 1 akan berakhir di index terakhir (paling bawah)
-    return pollIds
+    // 2. Map ke Number
+    // 3. Reverse: ID terbesar (terbaru) jadi index 0 (paling atas)
+    return [...pollIds]
       .filter((id: any) => id !== 0n)
       .map((id: any) => Number(id))
       .reverse(); 
@@ -43,8 +43,8 @@ export default function QuestList() {
 
   return (
     <div className="relative w-full h-[400px] flex flex-col items-center justify-center">
-      <button onClick={handleRefresh} className="absolute -top-12 right-4 p-2 text-gray-400 hover:text-blue-600 flex items-center gap-1 text-[10px] font-black uppercase">
-        <MdRefresh /> Refresh
+      <button onClick={handleRefresh} className="absolute -top-12 right-4 p-2 text-gray-400 hover:text-blue-600 flex items-center gap-1 text-[10px] font-black uppercase transition-all">
+        <MdRefresh className="text-sm" /> Refresh
       </button>
 
       <div className="relative w-full h-80 flex items-center justify-center perspective-1000">
@@ -59,13 +59,13 @@ export default function QuestList() {
               const pid = allPollIds[cardIdx];
               return (
                 <SwipeCard 
-                  key={pid} // Gunakan PID murni sebagai key
+                  key={pid} 
                   pollId={pid} 
                   onSwipe={handleSwipe} 
                   index={offset} 
                 />
               );
-            }).reverse() // Reverse di sini agar offset 0 berada di atas offset 1 secara visual
+            }).reverse() // Reverse stack agar index 0 (top card) berada paling depan secara visual
           )}
         </AnimatePresence>
       </div>
