@@ -11,20 +11,19 @@ interface Props {
 export default function QuestCard({ pollId }: Props) {
   const { address: userAddress } = useAccount();
 
-  // 1. Ambil data Poll
+  // FIX: Convert pollId to BigInt
   const { data: pollData } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "getPollInfo",
-    args: [BigInt(pollId)], // FIX: Convert to BigInt
+    args: [BigInt(pollId)],
   });
 
-  // 2. Cek apakah user sudah vote (Butuh 2 args: pollId & address)
+  // FIX: hasVoted now requires [pollId, userAddress]
   const { data: hasVotedData } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "hasVoted",
-    // FIX TS ERROR: Kirim [pollId, address]
     args: userAddress ? [BigInt(pollId), userAddress] : undefined,
     query: { enabled: !!userAddress },
   });
@@ -32,6 +31,7 @@ export default function QuestCard({ pollId }: Props) {
   if (!pollData) return null;
   const [question, , votes1, , votes2] = pollData as any;
   const totalVotes = Number(votes1 || 0) + Number(votes2 || 0);
+  const hasVoted = Boolean(hasVotedData);
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-5 rounded-2xl shadow-sm mb-4">
@@ -42,7 +42,7 @@ export default function QuestCard({ pollId }: Props) {
         </div>
       </div>
       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-        {Boolean(hasVotedData) ? "Already Voted ✅" : "Not Voted Yet"}
+        {hasVoted ? "Already Voted ✅" : "Not Voted Yet"}
       </p>
     </div>
   );
