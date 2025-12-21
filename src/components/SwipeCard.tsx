@@ -23,14 +23,14 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   const [showSelection, setShowSelection] = useState(false);
   const [confirmChoice, setConfirmChoice] = useState<number | null>(null);
   const [isVotingLoading, setIsVotingLoading] = useState(false);
-  const [useGas, setUseGas] = useState(true); 
+  const [useGas, setUseGas] = useState(true);
 
   const { address: userAddress, chain } = useAccount();
   const { data: availableCapabilities } = useCapabilities({ account: userAddress });
   const { sendCallsAsync } = useSendCalls();         
   const { writeContractAsync } = useWriteContract(); 
 
-  // Deteksi apakah dompet mendukung Gas Sponsored (Smart Wallet)
+  // Deteksi apakah dompet mendukung Gas Sponsored (Base App / Smart Wallet)
   const canUsePaymaster = useMemo(() => {
     if (!availableCapabilities || !chain) return false;
     return !!availableCapabilities[chain.id]?.["paymasterService"]?.supported && !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
@@ -104,10 +104,12 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
         setShowSelection(false);
         setConfirmChoice(null);
 
+        // Feedback visual SUCCESS selama 1.5 detik
         setTimeout(async () => {
             await animate(x, 1000, { duration: 0.4 });
-            onSwipe("right");
+            onSwipe("right"); // Kirim direction "right" agar QuestList pindah ke CycleMeme
         }, 1500);
+
     } catch (e) {
         setIsVotingLoading(false);
     }
@@ -129,7 +131,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
             }
         } else if (info.offset.x < -100) {
             await animate(x, -1000, { duration: 0.3 });
-            onSwipe("left");
+            onSwipe("left"); // Kirim direction "left"
         } else {
             animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
         }
@@ -167,7 +169,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                 <div className="w-full flex flex-col items-center px-4">
                     <p className="text-lg font-black mb-6 dark:text-white text-center">"{confirmChoice === 1 ? opt1 : opt2}"</p>
                     
-                    {/* TOGGLE GAS SPONSORED: Hanya muncul jika didukung (Base App/Smart Wallet) */}
+                    {/* HANYA TAMPILKAN TOGGLE JIKA DIDUKUNG */}
                     {canUsePaymaster && (
                       <div className="mb-6 w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100">
                           <div className="flex flex-col items-start text-left">
@@ -182,7 +184,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                       </div>
                     )}
 
-                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl disabled:opacity-50 active:scale-95 transition-transform">
+                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl disabled:opacity-50">
                         {isVotingLoading ? "SIGNING..." : "CONFIRM VOTE"}
                     </button>
                     <button onClick={() => setConfirmChoice(null)} className="mt-4 text-[10px] font-black text-gray-400 uppercase">Change</button>
