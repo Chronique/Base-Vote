@@ -30,7 +30,6 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   const { sendCallsAsync } = useSendCalls();         
   const { writeContractAsync } = useWriteContract(); 
 
-  // DETEKSI SMART WALLET (Base App) vs EOA (Standard/Farcaster)
   const canUsePaymaster = useMemo(() => {
     if (!availableCapabilities || !chain) return false;
     return !!availableCapabilities[chain.id]?.["paymasterService"]?.supported && !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
@@ -48,20 +47,14 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   }, [canUsePaymaster, useGas]);
 
   const { data: pollData } = useReadContract({
-    address: FACTORY_ADDRESS as `0x${string}`,
-    abi: FACTORY_ABI,
-    functionName: "getPollInfo",
-    args: [BigInt(pollId)],
-    chainId: base.id
+    address: FACTORY_ADDRESS as `0x${string}`, abi: FACTORY_ABI,
+    functionName: "getPollInfo", args: [BigInt(pollId)], chainId: base.id
   });
 
   const { data: hasVoted } = useReadContract({
-    address: FACTORY_ADDRESS as `0x${string}`,
-    abi: FACTORY_ABI,
-    functionName: "hasVoted",
-    args: userAddress ? [BigInt(pollId), userAddress] : undefined,
-    query: { enabled: !!userAddress },
-    chainId: base.id
+    address: FACTORY_ADDRESS as `0x${string}`, abi: FACTORY_ABI,
+    functionName: "hasVoted", args: userAddress ? [BigInt(pollId), userAddress] : undefined,
+    query: { enabled: !!userAddress }, chainId: base.id
   });
 
   const x = useMotionValue(0);
@@ -80,23 +73,13 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
     setIsVotingLoading(true);
     try {
         const encodedData = encodeFunctionData({
-            abi: FACTORY_ABI,
-            functionName: "vote",
-            args: [BigInt(pollId), BigInt(confirmChoice)]
+            abi: FACTORY_ABI, functionName: "vote", args: [BigInt(pollId), BigInt(confirmChoice)]
         });
 
         if (useGas && canUsePaymaster) {
-            await sendCallsAsync({
-                calls: [{ to: FACTORY_ADDRESS as `0x${string}`, data: encodedData }],
-                capabilities: capabilities as any
-            });
+            await sendCallsAsync({ calls: [{ to: FACTORY_ADDRESS as `0x${string}`, data: encodedData }], capabilities: capabilities as any });
         } else {
-            await writeContractAsync({ 
-                address: FACTORY_ADDRESS as `0x${string}`, 
-                abi: FACTORY_ABI, 
-                functionName: "vote", 
-                args: [BigInt(pollId), BigInt(confirmChoice)] 
-            });
+            await writeContractAsync({ address: FACTORY_ADDRESS as `0x${string}`, abi: FACTORY_ABI, functionName: "vote", args: [BigInt(pollId), BigInt(confirmChoice)] });
         }
 
         setLocalVoted(true); 
@@ -104,7 +87,6 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
         setShowSelection(false);
         setConfirmChoice(null);
 
-        // Langsung lempar kartu dan panggil onSwipe
         setTimeout(async () => {
             await animate(x, 1000, { duration: 0.4 });
             onSwipe("right");
@@ -116,36 +98,28 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
 
   return (
     <motion.div
-  style={{ x, rotate, opacity, scale: index === 0 ? 1 : 0.95, backgroundColor: activeBg }}
-  // Drag selalu aktif agar bisa swipe kiri (skip)
-  drag={index === 0 && !showSelection && !confirmChoice ? "x" : false} 
-  dragConstraints={{ left: 0, right: 0 }}
-  onDragEnd={async (e, info) => {
-    if (info.offset.x > 100) {
-        // Swipe Kanan (Vote)
-        if (!isVotedDisplay && !isEnded) {
-            setShowSelection(true); 
-            animate(x, 0);
+      style={{ x, rotate, opacity, scale: index === 0 ? 1 : 0.95, backgroundColor: activeBg }}
+      drag={index === 0 && !showSelection && !confirmChoice ? "x" : false} 
+      dragConstraints={{ left: 0, right: 0 }}
+      className={`absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border dark:border-gray-800 flex flex-col items-center justify-center p-6 text-center z-${10-index} overflow-hidden touch-none`}
+      onDragEnd={async (e, info) => {
+        if (info.offset.x > 100) {
+            if (!isVotedDisplay && !isEnded) {
+                setShowSelection(true); animate(x, 0);
+            } else {
+                animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
+            }
+        } else if (info.offset.x < -100) {
+            await animate(x, -1000, { duration: 0.3 });
+            onSwipe("left");
         } else {
-            // Balik ke tengah jika sudah vote
             animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
         }
-    } else if (info.offset.x < -100) {
-        // Swipe Kiri (Skip) - SELALU BISA
-        await animate(x, -1000, { duration: 0.3 });
-        onSwipe("left");
-    } else {
-        animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
-    }
-  }}
+      }}
     >
       <AnimatePresence>
           {(isEnded || isVotedDisplay) && (
-              <motion.div 
-                initial={{ scale: 3, opacity: 0, rotate: -45 }}
-                animate={{ scale: 1, opacity: 1, rotate: -15 }}
-                className="absolute inset-0 flex items-center justify-center z-[70] pointer-events-none"
-              >
+              <motion.div initial={{ scale: 3, opacity: 0, rotate: -30 }} animate={{ scale: 1, opacity: 1, rotate: -15 }} className="absolute inset-0 flex items-center justify-center z-[70] pointer-events-none">
                   <div className={`px-6 py-2 border-[10px] rounded-xl font-black text-5xl uppercase tracking-tighter ${isEnded ? 'border-red-600/40 text-red-600/50' : 'border-green-600/40 text-green-600/50'}`}>
                       {isEnded ? "EXPIRED" : "VOTED"}
                   </div>
@@ -160,7 +134,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
       <h3 className="text-2xl font-black leading-tight px-4 text-gray-900 dark:text-white z-10">{question}</h3>
 
       {showSelection && !isVotedDisplay && (
-        <div className="absolute inset-0 z-[60] bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6">
+        <div className="absolute inset-0 z-[60] bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6 transition-all">
             {!confirmChoice ? (
                 <div className="w-full flex flex-col gap-3 px-4">
                     <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-bold rounded-2xl border border-blue-100">{opt1}</button>
@@ -169,9 +143,9 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                 </div>
             ) : (
                 <div className="w-full flex flex-col items-center px-4">
-                    <p className="text-lg font-black mb-6 dark:text-white text-center">"{confirmChoice === 1 ? opt1 : opt2}"</p>
+                    <p className="text-lg font-black mb-6 dark:text-white text-center leading-tight">"{confirmChoice === 1 ? opt1 : opt2}"</p>
                     
-                    {/* HANYA TAMPILKAN TOGGLE JIKA DIDUKUNG SMART WALLET */}
+                    {/* TOGGLE GAS SPONSORED: Hanya muncul jika wallet mendukung */}
                     {canUsePaymaster && (
                       <div className="mb-6 w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100">
                           <div className="flex flex-col items-start text-left">
@@ -186,7 +160,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                       </div>
                     )}
 
-                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl disabled:opacity-50 transition-transform active:scale-95">
+                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl disabled:opacity-50">
                         {isVotingLoading ? "SIGNING..." : "CONFIRM VOTE"}
                     </button>
                     <button onClick={() => setConfirmChoice(null)} className="mt-4 text-[10px] font-black text-gray-400 uppercase">Change</button>

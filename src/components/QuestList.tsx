@@ -12,9 +12,8 @@ import { MdRefresh } from "react-icons/md";
 export default function QuestList() {
   const [globalIndex, setGlobalIndex] = useState(0);
   const [isCycleActive, setIsCycleActive] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0); // UNTUK RESET KARTU
+  const [refreshKey, setRefreshKey] = useState(0); 
 
-  // Ambil 10 kartu terbaru
   const { data: pollIds, isLoading, refetch } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
@@ -25,7 +24,7 @@ export default function QuestList() {
 
   const allPollIds = useMemo(() => {
     if (!pollIds || !Array.isArray(pollIds)) return [];
-    // JANGAN PAKAI .reverse() karena kontrak sudah Newest First
+    // Kontrak baru sudah Newest First (ID 10, 9, 8...)
     return pollIds.map((id: any) => Number(id)); 
   }, [pollIds]);
 
@@ -33,18 +32,18 @@ export default function QuestList() {
     await refetch();
     setGlobalIndex(0);
     setIsCycleActive(false);
-    setRefreshKey(prev => prev + 1); // RESET SEMUA STATE KARTU
+    setRefreshKey(prev => prev + 1); // Reset total kartu
   };
 
   const handleSwipe = (direction: "left" | "right") => {
     const nextIndex = globalIndex + 1;
     setGlobalIndex(nextIndex);
 
-    // Jika VOTE (kanan), langsung ke CycleMeme agar user tidak bingung
+    // Langsung ke CycleMeme setelah vote (kanan)
     if (direction === "right") {
       setTimeout(() => setIsCycleActive(true), 600);
     } 
-    // Jika kartu habis
+    // Ke CycleMeme jika kartu habis setelah skip (kiri)
     else if (nextIndex >= allPollIds.length) {
       setTimeout(() => setIsCycleActive(true), 600);
     }
@@ -71,13 +70,13 @@ export default function QuestList() {
               const pid = allPollIds[cardIdx];
               return (
                 <SwipeCard 
-                  key={`${pid}-${refreshKey}`} // GUNAKAN REFRESH KEY
+                  key={`${pid}-${refreshKey}`} // RefreshKey mereset posisi kartu
                   pollId={pid} 
                   onSwipe={handleSwipe} 
                   index={offset} 
                 />
               );
-            }).reverse() // Stack visual: kartu offset 0 tetap paling depan
+            }).reverse()
           )}
         </AnimatePresence>
       </div>
