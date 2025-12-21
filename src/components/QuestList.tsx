@@ -13,20 +13,20 @@ export default function QuestList() {
   const [globalIndex, setGlobalIndex] = useState(0);
   const [isCycleActive, setIsCycleActive] = useState(false);
 
+  // Ambil 20 kartu terbaru
   const { data: pollIds, isLoading, refetch } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "getPollsPaged",
-    args: [0n, 10n], 
+    args: [0n, 20n], 
     chainId: base.id
   });
 
   const allPollIds = useMemo(() => {
     if (!pollIds || !Array.isArray(pollIds)) return [];
-    return [...pollIds]
-      .filter((id: any) => id !== 0n)
-      .map((id: any) => Number(id))
-      .reverse(); 
+    // Jangan pakai .reverse() karena kontrak baru sudah mengurutkan (Newest First)
+    return pollIds
+      .map((id: any) => Number(id)); 
   }, [pollIds]);
 
   const handleRefresh = async () => {
@@ -35,16 +35,15 @@ export default function QuestList() {
     setIsCycleActive(false);
   };
 
-  // Tambahkan parameter direction
   const handleSwipe = (direction: "left" | "right") => {
     const nextIndex = globalIndex + 1;
     setGlobalIndex(nextIndex);
 
-    // LOGIKA BARU: Jika vote (kanan), langsung ke CycleMeme
+    // LOGIKA: Jika swipe kanan (vote), langsung tampilkan CycleMeme
     if (direction === "right") {
       setTimeout(() => setIsCycleActive(true), 600);
     } 
-    // Jika skip (kiri), hanya ke CycleMeme jika kartu habis
+    // Jika kartu habis
     else if (nextIndex >= allPollIds.length) {
       setTimeout(() => setIsCycleActive(true), 600);
     }
@@ -73,11 +72,11 @@ export default function QuestList() {
                 <SwipeCard 
                   key={pid} 
                   pollId={pid} 
-                  onSwipe={handleSwipe} // Mengirim fungsi handleSwipe
+                  onSwipe={handleSwipe} 
                   index={offset} 
                 />
               );
-            }).reverse()
+            }).reverse() // Reverse visual stack: ID index 0 tetap di depan
           )}
         </AnimatePresence>
       </div>

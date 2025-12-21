@@ -35,9 +35,9 @@ function PollItem({ pollId, filterMode }: { pollId: number, filterMode: "all" | 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 rounded-2xl shadow-sm mb-3 animate-in fade-in slide-in-from-bottom-2">
       <h3 className="font-bold text-gray-800 dark:text-gray-200">{question}</h3>
-      <div className="mt-2 flex justify-between items-center text-[10px] font-black uppercase text-gray-400 tracking-widest">
+      <div className="mt-2 flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-gray-400">
         <span>{total} VOTES</span>
-        {hasVoted && <span className="text-green-500 bg-green-50 dark:bg-green-900/10 px-2 py-1 rounded-md">VOTED ✅</span>}
+        {hasVoted && <span className="text-green-500 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-md">VOTED ✅</span>}
       </div>
     </div>
   );
@@ -45,18 +45,18 @@ function PollItem({ pollId, filterMode }: { pollId: number, filterMode: "all" | 
 
 export default function MyActivity() {
   const [filterMode, setFilterMode] = useState<"all" | "mine">("all");
-
   const { data: pollIds, isLoading, refetch } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "getPollsPaged",
-    args: [0n, 20n], // LIMIT 20
+    args: [0n, 20n], 
     chainId: base.id
   });
 
   const formattedPollIds = useMemo(() => {
-  if (!pollIds || !Array.isArray(pollIds)) return [];
-  return [...pollIds].filter(id => id !== 0n).reverse();
+    if (!pollIds || !Array.isArray(pollIds)) return [];
+    // Jangan reverse karena kontrak sudah Newest First
+    return [...pollIds];
   }, [pollIds]);
 
   if (isLoading) return <div className="text-center mt-20 font-black text-[10px] text-gray-400 animate-pulse uppercase">Syncing Activity...</div>;
@@ -74,13 +74,9 @@ export default function MyActivity() {
       </div>
 
       <div className="flex flex-col">
-        {formattedPollIds.length === 0 ? (
-          <div className="text-center py-10 text-gray-400 font-bold text-[10px] uppercase">No polls found</div>
-        ) : (
-          formattedPollIds.map((id) => (
-            <PollItem key={id.toString()} pollId={Number(id)} filterMode={filterMode} />
-          ))
-        )}
+        {formattedPollIds.map((id) => (
+          <PollItem key={id.toString()} pollId={Number(id)} filterMode={filterMode} />
+        ))}
       </div>
     </div>
   );

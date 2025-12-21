@@ -30,7 +30,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   const { sendCallsAsync } = useSendCalls();         
   const { writeContractAsync } = useWriteContract(); 
 
-  // Deteksi apakah dompet mendukung Gas Sponsored (Base App / Smart Wallet)
+  // DETEKSI SMART WALLET (Base App) vs EOA (Standard/Farcaster)
   const canUsePaymaster = useMemo(() => {
     if (!availableCapabilities || !chain) return false;
     return !!availableCapabilities[chain.id]?.["paymasterService"]?.supported && !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
@@ -104,12 +104,11 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
         setShowSelection(false);
         setConfirmChoice(null);
 
-        // Feedback visual SUCCESS selama 1.5 detik
+        // Langsung lempar kartu dan panggil onSwipe
         setTimeout(async () => {
             await animate(x, 1000, { duration: 0.4 });
-            onSwipe("right"); // Kirim direction "right" agar QuestList pindah ke CycleMeme
+            onSwipe("right");
         }, 1500);
-
     } catch (e) {
         setIsVotingLoading(false);
     }
@@ -131,7 +130,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
             }
         } else if (info.offset.x < -100) {
             await animate(x, -1000, { duration: 0.3 });
-            onSwipe("left"); // Kirim direction "left"
+            onSwipe("left");
         } else {
             animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
         }
@@ -140,7 +139,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
       <AnimatePresence>
           {(isEnded || isVotedDisplay) && (
               <motion.div 
-                initial={{ scale: 3, opacity: 0, rotate: -30 }}
+                initial={{ scale: 3, opacity: 0, rotate: -45 }}
                 animate={{ scale: 1, opacity: 1, rotate: -15 }}
                 className="absolute inset-0 flex items-center justify-center z-[70] pointer-events-none"
               >
@@ -158,7 +157,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
       <h3 className="text-2xl font-black leading-tight px-4 text-gray-900 dark:text-white z-10">{question}</h3>
 
       {showSelection && !isVotedDisplay && (
-        <div className="absolute inset-0 z-[60] bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6 transition-all">
+        <div className="absolute inset-0 z-[60] bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6">
             {!confirmChoice ? (
                 <div className="w-full flex flex-col gap-3 px-4">
                     <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-bold rounded-2xl border border-blue-100">{opt1}</button>
@@ -169,7 +168,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                 <div className="w-full flex flex-col items-center px-4">
                     <p className="text-lg font-black mb-6 dark:text-white text-center">"{confirmChoice === 1 ? opt1 : opt2}"</p>
                     
-                    {/* HANYA TAMPILKAN TOGGLE JIKA DIDUKUNG */}
+                    {/* HANYA TAMPILKAN TOGGLE JIKA DIDUKUNG SMART WALLET */}
                     {canUsePaymaster && (
                       <div className="mb-6 w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100">
                           <div className="flex flex-col items-start text-left">
@@ -184,7 +183,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                       </div>
                     )}
 
-                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl disabled:opacity-50">
+                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl disabled:opacity-50 transition-transform active:scale-95">
                         {isVotingLoading ? "SIGNING..." : "CONFIRM VOTE"}
                     </button>
                     <button onClick={() => setConfirmChoice(null)} className="mt-4 text-[10px] font-black text-gray-400 uppercase">Change</button>
