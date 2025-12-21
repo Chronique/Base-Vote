@@ -24,29 +24,31 @@ export default function QuestList() {
 
   const allPollIds = useMemo(() => {
     if (!pollIds || !Array.isArray(pollIds)) return [];
-    // Kontrak baru sudah mengurutkan Descending (ID 10, 9, 8...)
+    // Kontrak baru sudah mengurutkan Descending (ID terbaru duluan)
     return pollIds.map((id: any) => Number(id)); 
-  }, [pollIds, refreshKey]); // Ikut berubah saat refreshKey berubah
+  }, [pollIds, refreshKey]);
 
   const handleRefresh = async () => {
     setIsCycleActive(false);
     setGlobalIndex(0);
-    setRefreshKey(prev => prev + 1); // Reset visual kartu
+    setRefreshKey(prev => prev + 1); // Reset total visual kartu
     await refetch();
   };
 
   const handleSwipe = (direction: "left" | "right") => {
+    // Jika VOTE (kanan), langsung refresh otomatis
     if (direction === "right") {
-      // Jika VOTE, langsung refresh otomatis seperti tombol aplikasi
-      handleRefresh();
+      setTimeout(() => handleRefresh(), 600);
       return;
     }
 
+    // Jika SKIP (kiri)
     const nextIndex = globalIndex + 1;
     setGlobalIndex(nextIndex);
 
+    // Aktifkan CycleMeme jika kartu terakhir sudah dilewati
     if (nextIndex >= allPollIds.length) {
-      setIsCycleActive(true);
+      setTimeout(() => setIsCycleActive(true), 600);
     }
   };
 
@@ -54,7 +56,6 @@ export default function QuestList() {
 
   return (
     <div className="relative w-full h-[400px] flex flex-col items-center justify-center">
-      {/* Tombol Refresh Manual */}
       {!isCycleActive && (
         <button onClick={handleRefresh} className="absolute -top-12 right-4 p-2 text-gray-400 hover:text-blue-600 flex items-center gap-1 text-[10px] font-black uppercase transition-all z-20">
           <MdRefresh className="text-sm" /> Refresh
