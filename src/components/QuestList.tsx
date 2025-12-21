@@ -24,7 +24,7 @@ export default function QuestList() {
 
   const allPollIds = useMemo(() => {
     if (!pollIds || !Array.isArray(pollIds)) return [];
-    // Kontrak baru sudah Newest First (ID 10, 9, 8...)
+    // Kontrak sudah mengurutkan Descending (ID terbaru duluan)
     return pollIds.map((id: any) => Number(id)); 
   }, [pollIds]);
 
@@ -32,19 +32,21 @@ export default function QuestList() {
     await refetch();
     setGlobalIndex(0);
     setIsCycleActive(false);
-    setRefreshKey(prev => prev + 1); // Reset total kartu
+    setRefreshKey(prev => prev + 1); // Reset state kartu agar tidak freeze
   };
 
   const handleSwipe = (direction: "left" | "right") => {
+    // Jika VOTE (kanan), langsung refresh deck untuk update data
+    if (direction === "right") {
+      setTimeout(() => handleRefresh(), 600);
+      return;
+    }
+
     const nextIndex = globalIndex + 1;
     setGlobalIndex(nextIndex);
 
-    // Langsung ke CycleMeme setelah vote (kanan)
-    if (direction === "right") {
-      setTimeout(() => setIsCycleActive(true), 600);
-    } 
-    // Ke CycleMeme jika kartu habis setelah skip (kiri)
-    else if (nextIndex >= allPollIds.length) {
+    // Jika kartu habis setelah SKIP (kiri)
+    if (nextIndex >= allPollIds.length) {
       setTimeout(() => setIsCycleActive(true), 600);
     }
   };
@@ -70,7 +72,7 @@ export default function QuestList() {
               const pid = allPollIds[cardIdx];
               return (
                 <SwipeCard 
-                  key={`${pid}-${refreshKey}`} // RefreshKey mereset posisi kartu
+                  key={`${pid}-${refreshKey}`} 
                   pollId={pid} 
                   onSwipe={handleSwipe} 
                   index={offset} 

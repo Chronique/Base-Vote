@@ -30,6 +30,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   const { sendCallsAsync } = useSendCalls();         
   const { writeContractAsync } = useWriteContract(); 
 
+  // Deteksi kemampuan Gas Sponsored
   const canUsePaymaster = useMemo(() => {
     if (!availableCapabilities || !chain) return false;
     return !!availableCapabilities[chain.id]?.["paymasterService"]?.supported && !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
@@ -89,7 +90,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
 
         setTimeout(async () => {
             await animate(x, 1000, { duration: 0.4 });
-            onSwipe("right");
+            onSwipe("right"); // Memacu refresh di QuestList
         }, 1500);
     } catch (e) {
         setIsVotingLoading(false);
@@ -119,7 +120,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
     >
       <AnimatePresence>
           {(isEnded || isVotedDisplay) && (
-              <motion.div initial={{ scale: 3, opacity: 0, rotate: -30 }} animate={{ scale: 1, opacity: 1, rotate: -15 }} className="absolute inset-0 flex items-center justify-center z-[70] pointer-events-none">
+              <motion.div initial={{ scale: 3, opacity: 0, rotate: -45 }} animate={{ scale: 1, opacity: 1, rotate: -15 }} className="absolute inset-0 flex items-center justify-center z-[70] pointer-events-none">
                   <div className={`px-6 py-2 border-[10px] rounded-xl font-black text-5xl uppercase tracking-tighter ${isEnded ? 'border-red-600/40 text-red-600/50' : 'border-green-600/40 text-green-600/50'}`}>
                       {isEnded ? "EXPIRED" : "VOTED"}
                   </div>
@@ -145,7 +146,6 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                 <div className="w-full flex flex-col items-center px-4">
                     <p className="text-lg font-black mb-6 dark:text-white text-center leading-tight">"{confirmChoice === 1 ? opt1 : opt2}"</p>
                     
-                    {/* TOGGLE GAS SPONSORED: Hanya muncul jika wallet mendukung */}
                     {canUsePaymaster && (
                       <div className="mb-6 w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100">
                           <div className="flex flex-col items-start text-left">
