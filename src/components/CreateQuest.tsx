@@ -5,7 +5,7 @@ import { useSendCalls, useCapabilities } from "wagmi/experimental";
 import { useWriteContract, useAccount, useWaitForTransactionReceipt } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants";
-import { MdCheckCircle, MdBolt } from "react-icons/md";
+import { MdBolt } from "react-icons/md";
 import { encodeFunctionData } from "viem";
 import { Attribution } from "ox/erc8021";
 
@@ -40,19 +40,19 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
 
   const canUsePaymaster = useMemo(() => {
     if (!availableCapabilities || !chain) return false;
-    // Deteksi Smart Wallet berkemampuan Paymaster
     return !!availableCapabilities[chain.id]?.["paymasterService"]?.supported && !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
   }, [availableCapabilities, chain]);
 
   const capabilities = useMemo(() => {
     const paymasterUrl = process.env.NEXT_PUBLIC_PAYMASTER_URL;
+    const attribution = Attribution.toDataSuffix({ codes: ["bc_9fbxmq2a"] }); // BUILDER CODE BARU
     if (usePaymaster && canUsePaymaster && paymasterUrl) {
         return {
           paymasterService: { url: paymasterUrl },
-          dataSuffix: Attribution.toDataSuffix({ codes: ["bc_2ivoo1oy"] })
+          dataSuffix: attribution
         };
     }
-    return { dataSuffix: Attribution.toDataSuffix({ codes: ["bc_2ivoo1oy"] }) };
+    return { dataSuffix: attribution };
   }, [canUsePaymaster, usePaymaster]);
 
   const handleCreate = async () => {
@@ -60,32 +60,29 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
     setIsSubmitting(true);
     try {
         const encodedData = encodeFunctionData({
-            abi: FACTORY_ABI,
-            functionName: "createPoll",
-            args: [question, opt1, opt2, BigInt(duration)] 
+            abi: FACTORY_ABI, functionName: "createPoll", args: [question, opt1, opt2, BigInt(duration)] 
         });
 
         if (usePaymaster && canUsePaymaster) {
-          await sendCallsAsync({
+          const result = await sendCallsAsync({
               calls: [{ to: FACTORY_ADDRESS as `0x${string}`, data: encodedData }],
               capabilities: capabilities as any
           });
+          // Receipt untuk sendCalls berbeda, kita beri refresh paksa
+          setTimeout(() => {
+              queryClient.invalidateQueries({ queryKey: ['readContract'] });
+              onSuccess();
+              setIsSubmitting(false);
+          }, 3000);
         } else {
           const hash = await writeContractAsync({
-            address: FACTORY_ADDRESS as `0x${string}`,
-            abi: FACTORY_ABI,
-            functionName: "createPoll",
-            args: [question, opt1, opt2, BigInt(duration)]
+              address: FACTORY_ADDRESS as `0x${string}`,
+              abi: FACTORY_ABI,
+              functionName: "createPoll",
+              args: [question, opt1, opt2, BigInt(duration)]
           });
           setTxHash(hash);
         }
-        
-        setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ['readContract'] });
-            onSuccess();
-            setIsSubmitting(false);
-        }, 3000);
-
     } catch (err) {
         setIsSubmitting(false);
     }
@@ -107,7 +104,6 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
           ))}
       </div>
 
-      {/* Hanya tampilkan jika dompet mendukung (Smart Wallet/Base App) */}
       {canUsePaymaster && (
           <div className="flex justify-center mt-2">
               <div className={`flex items-center gap-2 px-5 py-2 rounded-full cursor-pointer border ${usePaymaster ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-gray-100 text-gray-500 border-transparent'}`} onClick={() => setUsePaymaster(!usePaymaster)}>
@@ -117,7 +113,7 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
       )}
 
       <button onClick={handleCreate} disabled={isSubmitting || isWaiting || !question} className="mt-2 w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 disabled:opacity-50">
-          {isSubmitting || isWaiting ? (isWaiting ? "CONFIRMING ON CHAIN..." : "CREATING...") : "CREATE POLL"}
+          {isSubmitting || isWaiting ? (isWaiting ? "CONFIRMING..." : "CREATING...") : "CREATE POLL"}
       </button>
     </div>
   );
