@@ -12,8 +12,9 @@ import { MdRefresh } from "react-icons/md";
 export default function QuestList() {
   const [globalIndex, setGlobalIndex] = useState(0);
   const [isCycleActive, setIsCycleActive] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0); // State untuk reset kartu
+  const [refreshKey, setRefreshKey] = useState(0); // UNTUK RESET KARTU
 
+  // Ambil 10 kartu terbaru
   const { data: pollIds, isLoading, refetch } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
@@ -24,8 +25,7 @@ export default function QuestList() {
 
   const allPollIds = useMemo(() => {
     if (!pollIds || !Array.isArray(pollIds)) return [];
-    // Kontrak baru sudah mengembalikan ID terbaru duluan (Newest First)
-    // Jadi kita tidak perlu membaliknya lagi di sini.
+    // JANGAN PAKAI .reverse() karena kontrak sudah Newest First
     return pollIds.map((id: any) => Number(id)); 
   }, [pollIds]);
 
@@ -33,18 +33,18 @@ export default function QuestList() {
     await refetch();
     setGlobalIndex(0);
     setIsCycleActive(false);
-    setRefreshKey(prev => prev + 1); // Memaksa kartu untuk remount total
+    setRefreshKey(prev => prev + 1); // RESET SEMUA STATE KARTU
   };
 
   const handleSwipe = (direction: "left" | "right") => {
     const nextIndex = globalIndex + 1;
     setGlobalIndex(nextIndex);
 
-    // Jika vote (kanan), langsung ke CycleMeme
+    // Jika VOTE (kanan), langsung ke CycleMeme agar user tidak bingung
     if (direction === "right") {
       setTimeout(() => setIsCycleActive(true), 600);
     } 
-    // Jika kartu habis (swipe kiri semua)
+    // Jika kartu habis
     else if (nextIndex >= allPollIds.length) {
       setTimeout(() => setIsCycleActive(true), 600);
     }
@@ -71,14 +71,13 @@ export default function QuestList() {
               const pid = allPollIds[cardIdx];
               return (
                 <SwipeCard 
-                  // Gunakan refreshKey agar posisi kartu reset setelah refresh
-                  key={`${pid}-${refreshKey}`} 
+                  key={`${pid}-${refreshKey}`} // GUNAKAN REFRESH KEY
                   pollId={pid} 
                   onSwipe={handleSwipe} 
                   index={offset} 
                 />
               );
-            }).reverse()
+            }).reverse() // Stack visual: kartu offset 0 tetap paling depan
           )}
         </AnimatePresence>
       </div>

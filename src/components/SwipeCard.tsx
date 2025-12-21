@@ -30,7 +30,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   const { sendCallsAsync } = useSendCalls();         
   const { writeContractAsync } = useWriteContract(); 
 
-  // Deteksi kemampuan Gas Sponsored (Smart Wallet Base App vs EOA)
+  // DETEKSI SMART WALLET (Base App) vs EOA (Standard/Farcaster)
   const canUsePaymaster = useMemo(() => {
     if (!availableCapabilities || !chain) return false;
     return !!availableCapabilities[chain.id]?.["paymasterService"]?.supported && !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
@@ -104,6 +104,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
         setShowSelection(false);
         setConfirmChoice(null);
 
+        // Langsung lempar kartu dan panggil onSwipe
         setTimeout(async () => {
             await animate(x, 1000, { duration: 0.4 });
             onSwipe("right");
@@ -115,30 +116,33 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
 
   return (
     <motion.div
-      style={{ x, rotate, opacity, scale: index === 0 ? 1 : 0.95, backgroundColor: activeBg }}
-      drag={index === 0 && !showSelection && !confirmChoice ? "x" : false} 
-      dragConstraints={{ left: 0, right: 0 }}
-      className={`absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border dark:border-gray-800 flex flex-col items-center justify-center p-6 text-center z-${10-index} overflow-hidden touch-none`}
-      onDragEnd={async (e, info) => {
-        if (info.offset.x > 100) {
-            if (!isVotedDisplay && !isEnded) {
-                setShowSelection(true); 
-                animate(x, 0);
-            } else {
-                animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
-            }
-        } else if (info.offset.x < -100) {
-            await animate(x, -1000, { duration: 0.3 });
-            onSwipe("left");
+  style={{ x, rotate, opacity, scale: index === 0 ? 1 : 0.95, backgroundColor: activeBg }}
+  // Drag selalu aktif agar bisa swipe kiri (skip)
+  drag={index === 0 && !showSelection && !confirmChoice ? "x" : false} 
+  dragConstraints={{ left: 0, right: 0 }}
+  onDragEnd={async (e, info) => {
+    if (info.offset.x > 100) {
+        // Swipe Kanan (Vote)
+        if (!isVotedDisplay && !isEnded) {
+            setShowSelection(true); 
+            animate(x, 0);
         } else {
+            // Balik ke tengah jika sudah vote
             animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
         }
-      }}
+    } else if (info.offset.x < -100) {
+        // Swipe Kiri (Skip) - SELALU BISA
+        await animate(x, -1000, { duration: 0.3 });
+        onSwipe("left");
+    } else {
+        animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
+    }
+  }}
     >
       <AnimatePresence>
           {(isEnded || isVotedDisplay) && (
               <motion.div 
-                initial={{ scale: 3, opacity: 0, rotate: -30 }}
+                initial={{ scale: 3, opacity: 0, rotate: -45 }}
                 animate={{ scale: 1, opacity: 1, rotate: -15 }}
                 className="absolute inset-0 flex items-center justify-center z-[70] pointer-events-none"
               >
@@ -182,7 +186,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                       </div>
                     )}
 
-                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl disabled:opacity-50">
+                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl disabled:opacity-50 transition-transform active:scale-95">
                         {isVotingLoading ? "SIGNING..." : "CONFIRM VOTE"}
                     </button>
                     <button onClick={() => setConfirmChoice(null)} className="mt-4 text-[10px] font-black text-gray-400 uppercase">Change</button>
