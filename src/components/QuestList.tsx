@@ -12,38 +12,39 @@ import { MdRefresh } from "react-icons/md";
 export default function QuestList() {
   const [globalIndex, setGlobalIndex] = useState(0);
   const [isCycleActive, setIsCycleActive] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0); // State untuk reset kartu
 
-  // Ambil 20 kartu terbaru
   const { data: pollIds, isLoading, refetch } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "getPollsPaged",
-    args: [0n, 20n], 
+    args: [0n, 10n], 
     chainId: base.id
   });
 
   const allPollIds = useMemo(() => {
     if (!pollIds || !Array.isArray(pollIds)) return [];
-    // Jangan pakai .reverse() karena kontrak baru sudah mengurutkan (Newest First)
-    return pollIds
-      .map((id: any) => Number(id)); 
+    // Kontrak baru sudah mengembalikan ID terbaru duluan (Newest First)
+    // Jadi kita tidak perlu membaliknya lagi di sini.
+    return pollIds.map((id: any) => Number(id)); 
   }, [pollIds]);
 
   const handleRefresh = async () => {
     await refetch();
     setGlobalIndex(0);
     setIsCycleActive(false);
+    setRefreshKey(prev => prev + 1); // Memaksa kartu untuk remount total
   };
 
   const handleSwipe = (direction: "left" | "right") => {
     const nextIndex = globalIndex + 1;
     setGlobalIndex(nextIndex);
 
-    // LOGIKA: Jika swipe kanan (vote), langsung tampilkan CycleMeme
+    // Jika vote (kanan), langsung ke CycleMeme
     if (direction === "right") {
       setTimeout(() => setIsCycleActive(true), 600);
     } 
-    // Jika kartu habis
+    // Jika kartu habis (swipe kiri semua)
     else if (nextIndex >= allPollIds.length) {
       setTimeout(() => setIsCycleActive(true), 600);
     }
@@ -62,7 +63,7 @@ export default function QuestList() {
       <div className="relative w-full h-80 flex items-center justify-center perspective-1000">
         <AnimatePresence mode="popLayout">
           {isCycleActive || allPollIds.length === 0 || globalIndex >= allPollIds.length ? (
-            <CycleMeme key="cycle" onRefresh={handleRefresh} />
+            <CycleMeme key={`cycle-${refreshKey}`} onRefresh={handleRefresh} />
           ) : (
             [0, 1].map((offset) => {
               const cardIdx = globalIndex + offset;
@@ -70,13 +71,14 @@ export default function QuestList() {
               const pid = allPollIds[cardIdx];
               return (
                 <SwipeCard 
-                  key={pid} 
+                  // Gunakan refreshKey agar posisi kartu reset setelah refresh
+                  key={`${pid}-${refreshKey}`} 
                   pollId={pid} 
                   onSwipe={handleSwipe} 
                   index={offset} 
                 />
               );
-            }).reverse() // Reverse visual stack: ID index 0 tetap di depan
+            }).reverse()
           )}
         </AnimatePresence>
       </div>

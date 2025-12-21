@@ -30,7 +30,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   const { sendCallsAsync } = useSendCalls();         
   const { writeContractAsync } = useWriteContract(); 
 
-  // DETEKSI SMART WALLET (Base App) vs EOA (Standard/Farcaster)
+  // Deteksi kemampuan Gas Sponsored (Smart Wallet Base App vs EOA)
   const canUsePaymaster = useMemo(() => {
     if (!availableCapabilities || !chain) return false;
     return !!availableCapabilities[chain.id]?.["paymasterService"]?.supported && !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
@@ -104,7 +104,6 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
         setShowSelection(false);
         setConfirmChoice(null);
 
-        // Langsung lempar kartu dan panggil onSwipe
         setTimeout(async () => {
             await animate(x, 1000, { duration: 0.4 });
             onSwipe("right");
@@ -139,7 +138,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
       <AnimatePresence>
           {(isEnded || isVotedDisplay) && (
               <motion.div 
-                initial={{ scale: 3, opacity: 0, rotate: -45 }}
+                initial={{ scale: 3, opacity: 0, rotate: -30 }}
                 animate={{ scale: 1, opacity: 1, rotate: -15 }}
                 className="absolute inset-0 flex items-center justify-center z-[70] pointer-events-none"
               >
@@ -183,7 +182,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                       </div>
                     )}
 
-                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl disabled:opacity-50 transition-transform active:scale-95">
+                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl disabled:opacity-50">
                         {isVotingLoading ? "SIGNING..." : "CONFIRM VOTE"}
                     </button>
                     <button onClick={() => setConfirmChoice(null)} className="mt-4 text-[10px] font-black text-gray-400 uppercase">Change</button>
