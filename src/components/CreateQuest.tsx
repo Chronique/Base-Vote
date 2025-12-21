@@ -24,15 +24,13 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
   const { sendCallsAsync } = useSendCalls(); 
   const { writeContractAsync } = useWriteContract();
 
-  // Menunggu konfirmasi transaksi agar data masuk ke blockchain sebelum refresh feed
   const { isSuccess: isTxConfirmed, isLoading: isWaiting } = useWaitForTransactionReceipt({
     hash: txHash,
   });
 
-  // Jika transaksi sukses dikonfirmasi di blockchain
   useEffect(() => {
     if (isTxConfirmed) {
-      queryClient.invalidateQueries({ queryKey: ['readContract'] }); // Hapus cache data lama
+      queryClient.invalidateQueries({ queryKey: ['readContract'] });
       onSuccess();
       setQuestion(""); setOpt1(""); setOpt2("");
       setIsSubmitting(false);
@@ -42,6 +40,7 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
 
   const canUsePaymaster = useMemo(() => {
     if (!availableCapabilities || !chain) return false;
+    // Deteksi Smart Wallet berkemampuan Paymaster
     return !!availableCapabilities[chain.id]?.["paymasterService"]?.supported && !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
   }, [availableCapabilities, chain]);
 
@@ -66,13 +65,21 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
             args: [question, opt1, opt2, BigInt(duration)] 
         });
 
-        // Catatan: sendCallsAsync mengembalikan bundle ID, untuk kepastian data, kita pakai writeContract sebagai fallback atau receipt
-        const result = await sendCallsAsync({
-            calls: [{ to: FACTORY_ADDRESS as `0x${string}`, data: encodedData }],
-            capabilities: capabilities as any
-        });
+        if (usePaymaster && canUsePaymaster) {
+          await sendCallsAsync({
+              calls: [{ to: FACTORY_ADDRESS as `0x${string}`, data: encodedData }],
+              capabilities: capabilities as any
+          });
+        } else {
+          const hash = await writeContractAsync({
+            address: FACTORY_ADDRESS as `0x${string}`,
+            abi: FACTORY_ABI,
+            functionName: "createPoll",
+            args: [question, opt1, opt2, BigInt(duration)]
+          });
+          setTxHash(hash);
+        }
         
-        // Sambil menunggu indexing (karena sendCalls receipt berbeda), kita beri delay atau manual refresh
         setTimeout(() => {
             queryClient.invalidateQueries({ queryKey: ['readContract'] });
             onSuccess();
@@ -80,17 +87,7 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
         }, 3000);
 
     } catch (err) {
-        try {
-            const hash = await writeContractAsync({
-                address: FACTORY_ADDRESS as `0x${string}`,
-                abi: FACTORY_ABI,
-                functionName: "createPoll",
-                args: [question, opt1, opt2, BigInt(duration)]
-            });
-            setTxHash(hash); // Memicu useWaitForTransactionReceipt
-        } catch (innerErr) {
-            setIsSubmitting(false);
-        }
+        setIsSubmitting(false);
     }
   };
 
@@ -103,22 +100,14 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
       </div>
 
       <div className="grid grid-cols-4 gap-2">
-    {[ 
-        {l: '1D', v: 86400}, 
-        {l: '1W', v: 604800}, 
-        {l: '1M', v: 2592000},
-        {l: '1Y', v: 31536000} // Tambahkan ini kembali
-    ].map((d) => (
-        <button 
-            key={d.v} 
-            onClick={() => setDuration(d.v)} 
-            className={`py-2 text-[10px] font-black rounded-lg border transition-all ${duration === d.v ? 'bg-blue-600 border-blue-600 text-white' : 'bg-gray-50 text-gray-400'}`}
-        >
-            {d.l}
-        </button>
-    ))}
-</div>
+          {[ {l: '1D', v: 86400}, {l: '1W', v: 604800}, {l: '1M', v: 2592000}, {l: '1Y', v: 31536000} ].map((d) => (
+              <button key={d.v} onClick={() => setDuration(d.v)} className={`py-2 text-[10px] font-black rounded-lg border transition-all ${duration === d.v ? 'bg-blue-600 border-blue-600 text-white' : 'bg-gray-50 text-gray-400'}`}>
+                  {d.l}
+              </button>
+          ))}
+      </div>
 
+      {/* Hanya tampilkan jika dompet mendukung (Smart Wallet/Base App) */}
       {canUsePaymaster && (
           <div className="flex justify-center mt-2">
               <div className={`flex items-center gap-2 px-5 py-2 rounded-full cursor-pointer border ${usePaymaster ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-gray-100 text-gray-500 border-transparent'}`} onClick={() => setUsePaymaster(!usePaymaster)}>

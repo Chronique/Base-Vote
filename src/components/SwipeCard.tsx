@@ -23,23 +23,29 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   const [showSelection, setShowSelection] = useState(false);
   const [confirmChoice, setConfirmChoice] = useState<number | null>(null);
   const [isVotingLoading, setIsVotingLoading] = useState(false);
-  const [useGas, setUseGas] = useState(true); // State untuk Toggle
+  const [useGas, setUseGas] = useState(true); 
 
   const { address: userAddress, chain } = useAccount();
   const { data: availableCapabilities } = useCapabilities({ account: userAddress });
   const { sendCallsAsync } = useSendCalls();         
   const { writeContractAsync } = useWriteContract(); 
 
+  // Deteksi apakah dompet mendukung Gas Sponsored (Smart Wallet)
+  const canUsePaymaster = useMemo(() => {
+    if (!availableCapabilities || !chain) return false;
+    return !!availableCapabilities[chain.id]?.["paymasterService"]?.supported && !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
+  }, [availableCapabilities, chain]);
+
   const capabilities = useMemo(() => {
     const paymasterUrl = process.env.NEXT_PUBLIC_PAYMASTER_URL;
-    if (useGas && paymasterUrl && availableCapabilities && chain && availableCapabilities[chain.id]?.["paymasterService"]?.supported) {
+    if (useGas && canUsePaymaster && paymasterUrl) {
         return {
           paymasterService: { url: paymasterUrl },
           dataSuffix: Attribution.toDataSuffix({ codes: ["bc_2ivoo1oy"] })
         };
     }
     return { dataSuffix: Attribution.toDataSuffix({ codes: ["bc_2ivoo1oy"] }) };
-  }, [availableCapabilities, chain, useGas]);
+  }, [canUsePaymaster, useGas]);
 
   const { data: pollData } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
@@ -79,7 +85,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
             args: [BigInt(pollId), BigInt(confirmChoice)]
         });
 
-        if (useGas) {
+        if (useGas && canUsePaymaster) {
             await sendCallsAsync({
                 calls: [{ to: FACTORY_ADDRESS as `0x${string}`, data: encodedData }],
                 capabilities: capabilities as any
@@ -110,13 +116,11 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   return (
     <motion.div
       style={{ x, rotate, opacity, scale: index === 0 ? 1 : 0.95, backgroundColor: activeBg }}
-      // Drag diaktifkan agar bisa swipe kiri (skip) meskipun sudah di-vote
       drag={index === 0 && !showSelection && !confirmChoice ? "x" : false} 
       dragConstraints={{ left: 0, right: 0 }}
       className={`absolute w-full max-w-sm h-80 rounded-3xl shadow-xl border dark:border-gray-800 flex flex-col items-center justify-center p-6 text-center z-${10-index} overflow-hidden touch-none`}
       onDragEnd={async (e, info) => {
         if (info.offset.x > 100) {
-            // Swipe Kanan (Vote) hanya jika belum vote/expired
             if (!isVotedDisplay && !isEnded) {
                 setShowSelection(true); 
                 animate(x, 0);
@@ -124,7 +128,6 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                 animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
             }
         } else if (info.offset.x < -100) {
-            // Swipe Kiri (Skip) selalu diizinkan
             await animate(x, -1000, { duration: 0.3 });
             onSwipe("left");
         } else {
@@ -152,7 +155,6 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
 
       <h3 className="text-2xl font-black leading-tight px-4 text-gray-900 dark:text-white z-10">{question}</h3>
 
-      {/* SELECTION OVERLAY */}
       {showSelection && !isVotedDisplay && (
         <div className="absolute inset-0 z-[60] bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6 transition-all">
             {!confirmChoice ? (
@@ -165,18 +167,20 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                 <div className="w-full flex flex-col items-center px-4">
                     <p className="text-lg font-black mb-6 dark:text-white text-center">"{confirmChoice === 1 ? opt1 : opt2}"</p>
                     
-                    {/* TOGGLE GAS SPONSORED */}
-                    <div className="mb-6 w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100">
-                        <div className="flex flex-col items-start text-left">
-                            <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-1">
-                                <MdBolt className={useGas ? "text-yellow-400" : "text-gray-300"} /> Sponsored
-                            </span>
-                            <span className="text-[9px] text-gray-500 font-medium">Gas: {useGas ? 'FREE' : 'USER'}</span>
-                        </div>
-                        <button onClick={() => setUseGas(!useGas)} className={`relative w-10 h-5 rounded-full ${useGas ? 'bg-blue-600' : 'bg-gray-300'}`}>
-                            <div className={`absolute top-1 left-1 bg-white w-3 h-3 rounded-full transition-transform ${useGas ? 'translate-x-5' : 'translate-x-0'}`} />
-                        </button>
-                    </div>
+                    {/* TOGGLE GAS SPONSORED: Hanya muncul jika didukung (Base App/Smart Wallet) */}
+                    {canUsePaymaster && (
+                      <div className="mb-6 w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100">
+                          <div className="flex flex-col items-start text-left">
+                              <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-1">
+                                  <MdBolt className={useGas ? "text-yellow-400" : "text-gray-300"} /> Sponsored
+                              </span>
+                              <span className="text-[9px] text-gray-500 font-medium">Gas: {useGas ? 'FREE' : 'USER'}</span>
+                          </div>
+                          <button onClick={() => setUseGas(!useGas)} className={`relative w-10 h-5 rounded-full ${useGas ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                              <div className={`absolute top-1 left-1 bg-white w-3 h-3 rounded-full transition-transform ${useGas ? 'translate-x-5' : 'translate-x-0'}`} />
+                          </button>
+                      </div>
+                    )}
 
                     <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl disabled:opacity-50 active:scale-95 transition-transform">
                         {isVotingLoading ? "SIGNING..." : "CONFIRM VOTE"}
@@ -187,7 +191,6 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
         </div>
       )}
 
-      {/* Tombol bawah hanya muncul jika tidak sedang memilih */}
       {!showSelection && (
         <div className="absolute bottom-6 flex justify-between w-full px-10 font-black text-[10px] tracking-widest uppercase text-gray-400 z-10">
             <div className="flex items-center gap-1"><MdArrowBack /> SKIP</div>
