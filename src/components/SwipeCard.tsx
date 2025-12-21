@@ -88,9 +88,8 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
 
         setTimeout(async () => {
             await animate(x, 1000, { duration: 0.4 });
-            onSwipe("right"); // Ini akan memicu hard refresh di QuestList
-        }, 1500);
-
+            onSwipe("right"); // Memanggil handleSwipe di QuestList
+        }, 1200); // Dikurangi dari 1500ms agar lebih responsif
     } catch (e) {
         setIsVotingLoading(false);
     }
