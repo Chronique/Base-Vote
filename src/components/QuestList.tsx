@@ -6,7 +6,7 @@ import { base } from "wagmi/chains";
 import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants";
 import SwipeCard from "./SwipeCard";
 import CycleMeme from "./CycleMeme"; 
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { MdRefresh } from "react-icons/md";
 
 export default function QuestList() {
@@ -24,30 +24,29 @@ export default function QuestList() {
 
   const allPollIds = useMemo(() => {
     if (!pollIds || !Array.isArray(pollIds)) return [];
-    // Kontrak sudah mengurutkan Descending (ID terbaru duluan)
+    // Kontrak baru sudah mengurutkan Descending (ID 10, 9, 8...)
     return pollIds.map((id: any) => Number(id)); 
-  }, [pollIds]);
+  }, [pollIds, refreshKey]); // Ikut berubah saat refreshKey berubah
 
   const handleRefresh = async () => {
-    await refetch();
-    setGlobalIndex(0);
     setIsCycleActive(false);
-    setRefreshKey(prev => prev + 1); // Reset state kartu agar tidak freeze
+    setGlobalIndex(0);
+    setRefreshKey(prev => prev + 1); // Reset visual kartu
+    await refetch();
   };
 
   const handleSwipe = (direction: "left" | "right") => {
-    // Jika VOTE (kanan), langsung refresh deck untuk update data
     if (direction === "right") {
-      setTimeout(() => handleRefresh(), 600);
+      // Jika VOTE, langsung refresh otomatis seperti tombol aplikasi
+      handleRefresh();
       return;
     }
 
     const nextIndex = globalIndex + 1;
     setGlobalIndex(nextIndex);
 
-    // Jika kartu habis setelah SKIP (kiri)
     if (nextIndex >= allPollIds.length) {
-      setTimeout(() => setIsCycleActive(true), 600);
+      setIsCycleActive(true);
     }
   };
 
@@ -55,30 +54,47 @@ export default function QuestList() {
 
   return (
     <div className="relative w-full h-[400px] flex flex-col items-center justify-center">
+      {/* Tombol Refresh Manual */}
       {!isCycleActive && (
-        <button onClick={handleRefresh} className="absolute -top-12 right-4 p-2 text-gray-400 hover:text-blue-600 flex items-center gap-1 text-[10px] font-black uppercase transition-all">
+        <button onClick={handleRefresh} className="absolute -top-12 right-4 p-2 text-gray-400 hover:text-blue-600 flex items-center gap-1 text-[10px] font-black uppercase transition-all z-20">
           <MdRefresh className="text-sm" /> Refresh
         </button>
       )}
 
       <div className="relative w-full h-80 flex items-center justify-center perspective-1000">
-        <AnimatePresence mode="popLayout">
-          {isCycleActive || allPollIds.length === 0 || globalIndex >= allPollIds.length ? (
-            <CycleMeme key={`cycle-${refreshKey}`} onRefresh={handleRefresh} />
+        <AnimatePresence mode="wait">
+          {isCycleActive || allPollIds.length === 0 ? (
+            <motion.div 
+              key={`cycle-${refreshKey}`}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              className="w-full h-full flex items-center justify-center"
+            >
+              <CycleMeme onRefresh={handleRefresh} />
+            </motion.div>
           ) : (
-            [0, 1].map((offset) => {
-              const cardIdx = globalIndex + offset;
-              if (cardIdx >= allPollIds.length) return null;
-              const pid = allPollIds[cardIdx];
-              return (
-                <SwipeCard 
-                  key={`${pid}-${refreshKey}`} 
-                  pollId={pid} 
-                  onSwipe={handleSwipe} 
-                  index={offset} 
-                />
-              );
-            }).reverse()
+            <motion.div 
+              key={`stack-${refreshKey}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="relative w-full h-full flex items-center justify-center"
+            >
+              {[0, 1].map((offset) => {
+                const cardIdx = globalIndex + offset;
+                if (cardIdx >= allPollIds.length) return null;
+                const pid = allPollIds[cardIdx];
+                return (
+                  <SwipeCard 
+                    key={`${pid}-${refreshKey}`} 
+                    pollId={pid} 
+                    onSwipe={handleSwipe} 
+                    index={offset} 
+                  />
+                );
+              }).reverse()}
+            </motion.div>
           )}
         </AnimatePresence>
       </div>
