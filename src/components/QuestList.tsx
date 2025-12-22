@@ -16,35 +16,31 @@ export default function QuestList() {
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "getPollsPaged",
-    args: [0n, 20n],
+    args: [0n, 20n], 
     chainId: base.id
   });
 
   const allPollIds = useMemo(() => {
     if (!pollIds || !Array.isArray(pollIds)) return [];
+    // Data dari kontrak sudah Newest First
     return pollIds.map(id => Number(id)); 
   }, [pollIds]);
 
-  const handleRefresh = () => {
-    // Fungsi ini dipicu dari CycleMeme untuk reload penuh
-    window.location.reload();
-  };
-
   const handleSwipe = (direction: "left" | "right") => {
-    // Jika VOTE (kanan), lupakan sisa kartu dan reload window
+    // 1. AUTO REFRESH FULL WINDOW JIKA VOTE (KANAN)
     if (direction === "right") {
-      // Reload setelah animasi swipe selesai
-      setTimeout(() => window.location.reload(), 500);
+      setTimeout(() => window.location.reload(), 600);
       return;
     }
 
-    // Jika SKIP (kiri)
+    // 2. JIKA SKIP (KIRI)
     const nextIndex = globalIndex + 1;
-    setGlobalIndex(nextIndex);
-
-    // Tampilkan CycleMeme jika sudah mencapai kartu terakhir
+    
     if (nextIndex >= allPollIds.length) {
+      // Jika kartu habis, tampilkan CycleMeme (Anti-Blank)
       setIsCycleActive(true);
+    } else {
+      setGlobalIndex(nextIndex);
     }
   };
 
@@ -52,8 +48,6 @@ export default function QuestList() {
 
   return (
     <div className="relative w-full h-[400px] flex flex-col items-center justify-center">
-      {/* Tombol Refresh Manual DIBUANG sesuai permintaan */}
-      
       <div className="relative w-full h-80 flex items-center justify-center perspective-1000">
         <AnimatePresence mode="wait">
           {isCycleActive || allPollIds.length === 0 ? (
@@ -62,7 +56,8 @@ export default function QuestList() {
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="w-full h-full flex items-center justify-center"
             >
-              <CycleMeme onRefresh={handleRefresh} />
+              {/* onRefresh memicu reload penuh */}
+              <CycleMeme onRefresh={() => window.location.reload()} />
             </motion.div>
           ) : (
             <motion.div 
