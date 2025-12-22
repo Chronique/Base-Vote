@@ -12,7 +12,8 @@ export default function QuestList() {
   const [globalIndex, setGlobalIndex] = useState(0);
   const [isCycleActive, setIsCycleActive] = useState(false);
 
-  const { data: pollIds, isLoading } = useReadContract({
+  // Ambil data pollIds dan fungsi REFETCH
+  const { data: pollIds, isLoading, refetch } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "getPollsPaged",
@@ -27,35 +28,54 @@ export default function QuestList() {
 
   const handleSwipe = (direction: "left" | "right") => {
     const nextIndex = globalIndex + 1;
+    // Cek apakah ini kartu terakhir?
     const isLastCard = nextIndex >= allPollIds.length;
 
-    // 1. JIKA VOTE (SWIPE KANAN)
-    if (direction === "right") {
-      if (isLastCard) {
-        // Jika kartu terakhir, tampilkan Meme (jangan reload dulu)
-        setTimeout(() => setIsCycleActive(true), 600);
-      } else {
-        // Jika bukan kartu terakhir, reload untuk update data (sesuai request Anda)
-        setTimeout(() => window.location.reload(), 600);
+    // --- LOGIKA UTAMA ---
+
+    // 1. CEK KARTU TERAKHIR (PRIORITAS TERTINGGI)
+    // Entah user Vote (Kanan) atau Skip (Kiri), kalau kartu habis -> CycleMeme
+    if (isLastCard) {
+      if (direction === "right") {
+         // Jika user vote di kartu terakhir, update data dulu di background
+         refetch();
       }
-      return;
+      // Tunda sedikit agar animasi swipe selesai, lalu tampilkan Meme
+      setTimeout(() => setIsCycleActive(true), 500);
+      return; 
     }
 
-    // 2. JIKA SKIP (SWIPE KIRI)
-    if (isLastCard) {
-      setTimeout(() => setIsCycleActive(true), 500);
+    // 2. JIKA BELUM KARTU TERAKHIR
+    if (direction === "right") {
+      // --- KASUS VOTE (KANAN) ---
+      // Update data blockchain di background agar tetap sinkron
+      refetch(); 
+      
+      // JANGAN RELOAD PAGE! Cukup geser ke kartu berikutnya.
+      // Ini mencegah stuck dan membiarkan user lanjut swipe.
+      setGlobalIndex(nextIndex);
     } else {
+      // --- KASUS SKIP (KIRI) ---
+      // Geser ke kartu berikutnya
       setGlobalIndex(nextIndex);
     }
   };
 
-  if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-black animate-pulse uppercase text-[10px]">Syncing Base...</div>;
+  if (isLoading) return (
+    <div className="h-64 flex flex-col items-center justify-center space-y-2">
+      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+      <p className="text-gray-400 font-black uppercase text-[10px] animate-pulse italic tracking-widest">
+        Syncing Base...
+      </p>
+    </div>
+  );
 
   return (
     <div className="relative w-full h-[400px] flex flex-col items-center justify-center">
       <div className="relative w-full h-80 flex items-center justify-center perspective-1000">
         <AnimatePresence mode="wait">
-          {/* Kondisi Menampilkan CycleMeme */}
+          
+          {/* TAMPILAN JIKA MEME AKTIF ATAU DATA KOSONG */}
           {isCycleActive || (allPollIds.length === 0 && !isLoading) ? (
             <motion.div 
               key="cycle-screen"
@@ -64,10 +84,12 @@ export default function QuestList() {
               exit={{ opacity: 0 }}
               className="w-full h-full flex items-center justify-center"
             >
-              {/* onRefresh di sini akan merestart aplikasi */}
+              {/* Tombol refresh di sini baru melakukan Full Reload */}
               <CycleMeme onRefresh={() => window.location.reload()} />
             </motion.div>
           ) : (
+            
+            /* TUMPUKAN KARTU */
             <motion.div 
               key="stack-wrapper"
               initial={{ opacity: 0 }}
