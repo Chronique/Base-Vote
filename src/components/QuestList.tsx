@@ -7,14 +7,12 @@ import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants";
 import SwipeCard from "./SwipeCard";
 import CycleMeme from "./CycleMeme"; 
 import { AnimatePresence, motion } from "framer-motion";
-import { MdRefresh } from "react-icons/md";
 
 export default function QuestList() {
   const [globalIndex, setGlobalIndex] = useState(0);
   const [isCycleActive, setIsCycleActive] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0); 
 
-  const { data: pollIds, isLoading, refetch } = useReadContract({
+  const { data: pollIds, isLoading } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "getPollsPaged",
@@ -24,49 +22,43 @@ export default function QuestList() {
 
   const allPollIds = useMemo(() => {
     if (!pollIds || !Array.isArray(pollIds)) return [];
-    // Urutan dari kontrak sudah Newest First
     return pollIds.map(id => Number(id)); 
-  }, [pollIds, refreshKey]);
+  }, [pollIds]);
 
-  const handleRefresh = async () => {
-    setGlobalIndex(0);
-    setIsCycleActive(false); 
-    setRefreshKey(prev => prev + 1); // Reset visual kartu agar tidak freeze
-    await refetch();
+  const handleRefresh = () => {
+    // Fungsi ini dipicu dari CycleMeme untuk reload penuh
+    window.location.reload();
   };
 
   const handleSwipe = (direction: "left" | "right") => {
-    // 1. AUTO REFRESH JIKA VOTE (KANAN)
+    // Jika VOTE (kanan), lupakan sisa kartu dan reload window
     if (direction === "right") {
-      handleRefresh(); 
+      // Reload setelah animasi swipe selesai
+      setTimeout(() => window.location.reload(), 500);
       return;
     }
 
-    // 2. JIKA SKIP (KIRI), LANJUT KE KARTU BERIKUTNYA
+    // Jika SKIP (kiri)
     const nextIndex = globalIndex + 1;
     setGlobalIndex(nextIndex);
 
-    // 3. CEK KARTU TERAKHIR (MASUK CYCLE MEME)
+    // Tampilkan CycleMeme jika sudah mencapai kartu terakhir
     if (nextIndex >= allPollIds.length) {
       setIsCycleActive(true);
     }
   };
 
-  if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-bold uppercase text-[10px] animate-pulse">Syncing Base...</div>;
+  if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-black animate-pulse uppercase text-[10px]">Syncing Base...</div>;
 
   return (
     <div className="relative w-full h-[400px] flex flex-col items-center justify-center">
-      {!isCycleActive && allPollIds.length > 0 && (
-        <button onClick={handleRefresh} className="absolute -top-12 right-4 p-2 text-gray-400 hover:text-blue-600 flex items-center gap-1 text-[10px] font-black uppercase transition-all z-20">
-          <MdRefresh className="text-sm" /> Refresh
-        </button>
-      )}
-
+      {/* Tombol Refresh Manual DIBUANG sesuai permintaan */}
+      
       <div className="relative w-full h-80 flex items-center justify-center perspective-1000">
         <AnimatePresence mode="wait">
           {isCycleActive || allPollIds.length === 0 ? (
             <motion.div 
-              key={`cycle-${refreshKey}`} 
+              key="cycle-screen"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="w-full h-full flex items-center justify-center"
             >
@@ -74,7 +66,7 @@ export default function QuestList() {
             </motion.div>
           ) : (
             <motion.div 
-              key={`stack-${refreshKey}`}
+              key="stack-container"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="relative w-full h-full flex items-center justify-center"
             >
@@ -84,7 +76,7 @@ export default function QuestList() {
                 const pid = allPollIds[cardIdx];
                 return (
                   <SwipeCard 
-                    key={`${pid}-${refreshKey}`} 
+                    key={pid} 
                     pollId={pid} 
                     onSwipe={handleSwipe} 
                     index={offset} 

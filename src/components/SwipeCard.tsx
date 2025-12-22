@@ -87,10 +87,10 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
         setIsVotingLoading(false);
         setShowSelection(false);
 
-        setTimeout(async () => {
-            await animate(x, 1000, { duration: 0.4 });
-            onSwipe("right"); // Pemicu Auto-Refresh di QuestList
-        }, 1200);
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
+
     } catch (e) {
         setIsVotingLoading(false);
     }
