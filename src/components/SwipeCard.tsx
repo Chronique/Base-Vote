@@ -72,7 +72,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
 
   if (!pollData) return null;
   const [question, opt1, votes1, opt2, votes2, endTime] = pollData as any;
-  const totalVotes = Number(votes1 || 0) + Number(votes2 || 0); // Perhitungan total pemilih
+  const totalVotes = Number(votes1 || 0) + Number(votes2 || 0); // Hitung total pemilih
   const isVotedDisplay = Boolean(hasVoted) || localVoted;
   const isEnded = Number(endTime) < Date.now() / 1000;
 
@@ -81,23 +81,34 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
     setIsVotingLoading(true);
     try {
         const encodedData = encodeFunctionData({
-            abi: FACTORY_ABI, functionName: "vote", args: [BigInt(pollId), BigInt(confirmChoice)]
+            abi: FACTORY_ABI, 
+            functionName: "vote", 
+            args: [BigInt(pollId), BigInt(confirmChoice)]
         });
 
         if (useGas && canUsePaymaster) {
-            await sendCallsAsync({ calls: [{ to: FACTORY_ADDRESS as `0x${string}`, data: encodedData }], capabilities: capabilities as any });
+            await sendCallsAsync({ 
+                calls: [{ to: FACTORY_ADDRESS as `0x${string}`, data: encodedData }], 
+                capabilities: capabilities as any 
+            });
         } else {
-            await writeContractAsync({ address: FACTORY_ADDRESS as `0x${string}`, abi: FACTORY_ABI, functionName: "vote", args: [BigInt(pollId), BigInt(confirmChoice)] });
+            await writeContractAsync({ 
+                address: FACTORY_ADDRESS as `0x${string}`, 
+                abi: FACTORY_ABI, 
+                functionName: "vote", 
+                args: [BigInt(pollId), BigInt(confirmChoice)] 
+            });
         }
 
         setLocalVoted(true); 
         setIsVotingLoading(false);
         setShowSelection(false);
 
-        // Auto Refresh Full Window setelah transaksi sukses
-        setTimeout(() => {
-            window.location.reload();
-        }, 1500);
+        // Alihkan ke onSwipe("right") agar QuestList bisa menampilkan CycleMeme
+        setTimeout(async () => {
+            await animate(x, 1000, { duration: 0.4 });
+            onSwipe("right");
+        }, 1200);
 
     } catch (e) {
         setIsVotingLoading(false);
@@ -131,7 +142,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
           )}
       </AnimatePresence>
 
-      {/* VOTERS COUNT - Bagian yang sebelumnya hilang */}
+      {/* Tampilan jumlah pemilih di pojok kiri atas */}
       <div className="absolute top-6 left-6 flex items-center gap-1 text-gray-400 font-black text-[10px] tracking-widest uppercase">
           <MdPeople className="text-sm" /> {totalVotes} Voters
       </div>
@@ -139,7 +150,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
       <h3 className="text-2xl font-black leading-tight px-4 text-gray-900 dark:text-white z-10">{question}</h3>
 
       {showSelection && !isVotedDisplay && (
-        <div className="absolute inset-0 z-[60] bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6 transition-all">
+        <div className="absolute inset-0 z-[60] bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6">
             {!confirmChoice ? (
                 <div className="w-full flex flex-col gap-3 px-4">
                     <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-bold rounded-2xl border border-blue-100">{opt1}</button>
@@ -153,9 +164,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                     {canUsePaymaster && (
                       <div className="mb-6 w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100">
                           <div className="flex flex-col items-start text-left">
-                              <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-1">
-                                  <MdBolt className={useGas ? "text-yellow-400" : "text-gray-300"} /> Sponsored
-                              </span>
+                              <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-1"><MdBolt className={useGas ? "text-yellow-400" : "text-gray-300"} /> Sponsored</span>
                               <span className="text-[9px] text-gray-500 font-medium">Gas: {useGas ? 'FREE' : 'USER'}</span>
                           </div>
                           <button onClick={() => setUseGas(!useGas)} className={`relative w-10 h-5 rounded-full ${useGas ? 'bg-blue-600' : 'bg-gray-300'}`}>
