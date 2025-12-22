@@ -30,7 +30,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   const { sendCallsAsync } = useSendCalls();         
   const { writeContractAsync } = useWriteContract(); 
 
-  // Deteksi dompet pendukung Gas Sponsored (Smart Wallet)
+  // Deteksi Smart Wallet (Base App) vs EOA (Farcaster/Standard)
   const canUsePaymaster = useMemo(() => {
     if (!availableCapabilities || !chain) return false;
     return !!availableCapabilities[chain.id]?.["paymasterService"]?.supported && !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
@@ -38,7 +38,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
 
   const capabilities = useMemo(() => {
     const paymasterUrl = process.env.NEXT_PUBLIC_PAYMASTER_URL;
-    const attribution = Attribution.toDataSuffix({ codes: ["bc_9fbxmq2a"] }); // BUILDER CODE BARU
+    const attribution = Attribution.toDataSuffix({ codes: ["bc_9fbxmq2a"] }); // Builder Code Anda
     if (useGas && canUsePaymaster && paymasterUrl) {
         return {
           paymasterService: { url: paymasterUrl },
@@ -89,8 +89,8 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
 
         setTimeout(async () => {
             await animate(x, 1000, { duration: 0.4 });
-            onSwipe("right"); // Memacu Auto-Refresh
-        }, 1500);
+            onSwipe("right"); // Pemicu Auto-Refresh di QuestList
+        }, 1200);
     } catch (e) {
         setIsVotingLoading(false);
     }
@@ -110,7 +110,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
         } else if (info.offset.x < -100) {
             await animate(x, -1000, { duration: 0.3 });
             onSwipe("left");
-        } else { animate(x, 0); }
+        } else { animate(x, 0, { type: "spring", stiffness: 300, damping: 30 }); }
       }}
     >
       <AnimatePresence>
@@ -137,7 +137,6 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                 <div className="w-full flex flex-col items-center px-4">
                     <p className="text-lg font-black mb-6 dark:text-white text-center">"{confirmChoice === 1 ? opt1 : opt2}"</p>
                     
-                    {/* HANYA TAMPILKAN TOGGLE JIKA DIDUKUNG SMART WALLET */}
                     {canUsePaymaster && (
                       <div className="mb-6 w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100">
                           <div className="flex flex-col items-start text-left">

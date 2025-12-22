@@ -24,21 +24,21 @@ export default function QuestList() {
 
   const allPollIds = useMemo(() => {
     if (!pollIds || !Array.isArray(pollIds)) return [];
-    // JANGAN PAKAI .reverse() karena kontrak sudah Newest First
-    return pollIds.map(id => Number(id)); 
+    // Kontrak baru sudah mengurutkan Descending (ID 10, 9, 8...)
+    return pollIds.map((id: any) => Number(id)); 
   }, [pollIds, refreshKey]);
 
   const handleRefresh = async () => {
     setGlobalIndex(0);
     setIsCycleActive(false);
-    setRefreshKey(prev => prev + 1); // Reset visual kartu agar bersih
+    setRefreshKey(prev => prev + 1); // Reset total kartu agar tidak freeze
     await refetch();
   };
 
   const handleSwipe = (direction: "left" | "right") => {
     // AUTO REFRESH JIKA VOTE (KANAN)
     if (direction === "right") {
-      setTimeout(() => handleRefresh(), 500);
+      handleRefresh(); 
       return;
     }
 
@@ -48,15 +48,15 @@ export default function QuestList() {
 
     // Aktifkan CycleMeme jika kartu habis
     if (nextIndex >= allPollIds.length) {
-      setTimeout(() => setIsCycleActive(true), 600);
+      setTimeout(() => setIsCycleActive(true), 400);
     }
   };
 
-  if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-black animate-pulse uppercase text-[10px]">Syncing Deck...</div>;
+  if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-black animate-pulse uppercase text-[10px]">Syncing Base...</div>;
 
   return (
     <div className="relative w-full h-[400px] flex flex-col items-center justify-center">
-      {!isCycleActive && (
+      {!isCycleActive && allPollIds.length > 0 && (
         <button onClick={handleRefresh} className="absolute -top-12 right-4 p-2 text-gray-400 hover:text-blue-600 flex items-center gap-1 text-[10px] font-black uppercase transition-all z-20">
           <MdRefresh className="text-sm" /> Refresh
         </button>
@@ -68,7 +68,7 @@ export default function QuestList() {
             <motion.div 
               key={`cycle-${refreshKey}`}
               initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-              className="w-full flex justify-center py-4"
+              className="w-full h-full flex items-center justify-center"
             >
               <CycleMeme onRefresh={handleRefresh} />
             </motion.div>
