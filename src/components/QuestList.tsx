@@ -18,41 +18,41 @@ export default function QuestList() {
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "getPollsPaged",
-    args: [0n, 20n], 
+    args: [0n, 20n],
     chainId: base.id
   });
 
   const allPollIds = useMemo(() => {
     if (!pollIds || !Array.isArray(pollIds)) return [];
-    // Kontrak baru sudah mengurutkan Descending (ID 10, 9, 8...)
-    return pollIds.map((id: any) => Number(id)); 
+    // Urutan dari kontrak sudah Newest First
+    return pollIds.map(id => Number(id)); 
   }, [pollIds, refreshKey]);
 
   const handleRefresh = async () => {
     setGlobalIndex(0);
-    setIsCycleActive(false);
-    setRefreshKey(prev => prev + 1); // Reset total kartu agar tidak freeze
+    setIsCycleActive(false); 
+    setRefreshKey(prev => prev + 1); // Reset visual kartu agar tidak freeze
     await refetch();
   };
 
   const handleSwipe = (direction: "left" | "right") => {
-    // AUTO REFRESH JIKA VOTE (KANAN)
+    // 1. AUTO REFRESH JIKA VOTE (KANAN)
     if (direction === "right") {
       handleRefresh(); 
       return;
     }
 
-    // JIKA SKIP (KIRI)
+    // 2. JIKA SKIP (KIRI), LANJUT KE KARTU BERIKUTNYA
     const nextIndex = globalIndex + 1;
     setGlobalIndex(nextIndex);
 
-    // Aktifkan CycleMeme jika kartu habis
+    // 3. CEK KARTU TERAKHIR (MASUK CYCLE MEME)
     if (nextIndex >= allPollIds.length) {
-      setTimeout(() => setIsCycleActive(true), 400);
+      setIsCycleActive(true);
     }
   };
 
-  if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-black animate-pulse uppercase text-[10px]">Syncing Base...</div>;
+  if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-bold uppercase text-[10px] animate-pulse">Syncing Base...</div>;
 
   return (
     <div className="relative w-full h-[400px] flex flex-col items-center justify-center">
@@ -66,8 +66,8 @@ export default function QuestList() {
         <AnimatePresence mode="wait">
           {isCycleActive || allPollIds.length === 0 ? (
             <motion.div 
-              key={`cycle-${refreshKey}`}
-              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+              key={`cycle-${refreshKey}`} 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="w-full h-full flex items-center justify-center"
             >
               <CycleMeme onRefresh={handleRefresh} />
