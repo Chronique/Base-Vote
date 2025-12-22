@@ -30,7 +30,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   const { sendCallsAsync } = useSendCalls();         
   const { writeContractAsync } = useWriteContract(); 
 
-  // Deteksi Smart Wallet (Base App) vs EOA (Farcaster/Standard)
+  // Deteksi Smart Wallet (Base App) agar Toggle Gas Sponsored tidak muncul di EOA/Farcaster
   const canUsePaymaster = useMemo(() => {
     if (!availableCapabilities || !chain) return false;
     return !!availableCapabilities[chain.id]?.["paymasterService"]?.supported && !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
@@ -49,14 +49,20 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   }, [canUsePaymaster, useGas]);
 
   const { data: pollData } = useReadContract({
-    address: FACTORY_ADDRESS as `0x${string}`, abi: FACTORY_ABI,
-    functionName: "getPollInfo", args: [BigInt(pollId)], chainId: base.id
+    address: FACTORY_ADDRESS as `0x${string}`, 
+    abi: FACTORY_ABI,
+    functionName: "getPollInfo", 
+    args: [BigInt(pollId)], 
+    chainId: base.id
   });
 
   const { data: hasVoted } = useReadContract({
-    address: FACTORY_ADDRESS as `0x${string}`, abi: FACTORY_ABI,
-    functionName: "hasVoted", args: userAddress ? [BigInt(pollId), userAddress] : undefined,
-    query: { enabled: !!userAddress }, chainId: base.id
+    address: FACTORY_ADDRESS as `0x${string}`, 
+    abi: FACTORY_ABI,
+    functionName: "hasVoted", 
+    args: userAddress ? [BigInt(pollId), userAddress] : undefined,
+    query: { enabled: !!userAddress }, 
+    chainId: base.id
   });
 
   const x = useMotionValue(0);
@@ -66,6 +72,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
 
   if (!pollData) return null;
   const [question, opt1, votes1, opt2, votes2, endTime] = pollData as any;
+  const totalVotes = Number(votes1 || 0) + Number(votes2 || 0); // Perhitungan total pemilih
   const isVotedDisplay = Boolean(hasVoted) || localVoted;
   const isEnded = Number(endTime) < Date.now() / 1000;
 
@@ -87,6 +94,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
         setIsVotingLoading(false);
         setShowSelection(false);
 
+        // Auto Refresh Full Window setelah transaksi sukses
         setTimeout(() => {
             window.location.reload();
         }, 1500);
@@ -123,10 +131,15 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
           )}
       </AnimatePresence>
 
+      {/* VOTERS COUNT - Bagian yang sebelumnya hilang */}
+      <div className="absolute top-6 left-6 flex items-center gap-1 text-gray-400 font-black text-[10px] tracking-widest uppercase">
+          <MdPeople className="text-sm" /> {totalVotes} Voters
+      </div>
+
       <h3 className="text-2xl font-black leading-tight px-4 text-gray-900 dark:text-white z-10">{question}</h3>
 
       {showSelection && !isVotedDisplay && (
-        <div className="absolute inset-0 z-[60] bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6">
+        <div className="absolute inset-0 z-[60] bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6 transition-all">
             {!confirmChoice ? (
                 <div className="w-full flex flex-col gap-3 px-4">
                     <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-bold rounded-2xl border border-blue-100">{opt1}</button>
@@ -135,12 +148,14 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                 </div>
             ) : (
                 <div className="w-full flex flex-col items-center px-4">
-                    <p className="text-lg font-black mb-6 dark:text-white text-center">"{confirmChoice === 1 ? opt1 : opt2}"</p>
+                    <p className="text-lg font-black mb-6 dark:text-white text-center leading-tight">"{confirmChoice === 1 ? opt1 : opt2}"</p>
                     
                     {canUsePaymaster && (
                       <div className="mb-6 w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100">
                           <div className="flex flex-col items-start text-left">
-                              <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-1"><MdBolt className={useGas ? "text-yellow-400" : "text-gray-300"} /> Sponsored</span>
+                              <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-1">
+                                  <MdBolt className={useGas ? "text-yellow-400" : "text-gray-300"} /> Sponsored
+                              </span>
                               <span className="text-[9px] text-gray-500 font-medium">Gas: {useGas ? 'FREE' : 'USER'}</span>
                           </div>
                           <button onClick={() => setUseGas(!useGas)} className={`relative w-10 h-5 rounded-full ${useGas ? 'bg-blue-600' : 'bg-gray-300'}`}>

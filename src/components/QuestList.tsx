@@ -12,18 +12,18 @@ export default function QuestList() {
   const [globalIndex, setGlobalIndex] = useState(0);
   const [isCycleActive, setIsCycleActive] = useState(false);
 
-  // Ambil data poll dari blockchain
+  // Ambil 30 Poll terbaru
   const { data: pollIds, isLoading } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "getPollsPaged",
-    args: [0n, 20n],
+    args: [0n, 30n],
     chainId: base.id
   });
 
   const allPollIds = useMemo(() => {
     if (!pollIds || !Array.isArray(pollIds)) return [];
-    // Data dari kontrak baru sudah Newest First
+    // Kontrak sudah mengirim urutan [Terbaru -> Lama]
     return pollIds.map(id => Number(id)); 
   }, [pollIds]);
 
@@ -36,9 +36,9 @@ export default function QuestList() {
 
     // 2. JIKA SKIP (KIRI)
     const nextIndex = globalIndex + 1;
-
+    
     if (nextIndex >= allPollIds.length) {
-      // AKTIFKAN CYCLE MEME (FIX BLANK SCREEN)
+      // Jika kartu habis, tampilkan CycleMeme (Anti-Blank)
       setIsCycleActive(true);
     } else {
       setGlobalIndex(nextIndex);
@@ -51,7 +51,7 @@ export default function QuestList() {
     <div className="relative w-full h-[400px] flex flex-col items-center justify-center">
       <div className="relative w-full h-80 flex items-center justify-center perspective-1000">
         <AnimatePresence mode="wait">
-          {/* LOGIKA: Jika kartu habis atau isCycleActive aktif */}
+          {/* TAMPILAN JIKA KARTU HABIS ATAU MEME AKTIF */}
           {isCycleActive || allPollIds.length === 0 ? (
             <motion.div 
               key="cycle-screen"
@@ -60,12 +60,12 @@ export default function QuestList() {
               exit={{ opacity: 0 }}
               className="w-full h-full flex items-center justify-center"
             >
-              {/* onRefresh memicu reload penuh halaman */}
               <CycleMeme onRefresh={() => window.location.reload()} />
             </motion.div>
           ) : (
+            /* PEMBUNGKUS WAJIB UNTUK ANIMASI KELUAR Tumpukan KARTU */
             <motion.div 
-              key="stack-wrapper" // Wrapper ini WAJIB ada agar AnimatePresence bekerja
+              key="stack-wrapper"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
