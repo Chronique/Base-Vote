@@ -29,12 +29,16 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
     hash: txHash,
   });
 
-  // Full Window Reload setelah transaksi sukses terkonfirmasi
+  // Jika transaksi sukses, bersihkan cache dan panggil onSuccess (tanpa reload halaman)
   useEffect(() => {
     if (isTxConfirmed) {
-      window.location.reload();
+      queryClient.invalidateQueries({ queryKey: ['readContract'] });
+      setQuestion(""); setOpt1(""); setOpt2("");
+      setIsSubmitting(false);
+      setTxHash(undefined);
+      onSuccess(); // Memberitahu parent bahwa proses selesai
     }
-  }, [isTxConfirmed]);
+  }, [isTxConfirmed, queryClient, onSuccess]);
 
   const canUsePaymaster = useMemo(() => {
     if (!availableCapabilities || !chain) return false;
@@ -43,7 +47,6 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
 
   const capabilities = useMemo(() => {
     const paymasterUrl = process.env.NEXT_PUBLIC_PAYMASTER_URL;
-    // Menggunakan Builder Code Anda: bc_9fbxmq2a
     const attribution = Attribution.toDataSuffix({ codes: ["bc_9fbxmq2a"] });
 
     if (usePaymaster && canUsePaymaster && paymasterUrl) {
@@ -73,10 +76,12 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
               capabilities: capabilities as any
           });
           
-          // Fallback reload untuk Smart Wallet jika receipt tidak terpantau otomatis
+          // Setelah kirim, bersihkan cache dan panggil onSuccess
           setTimeout(() => {
-            window.location.reload();
-          }, 3500);
+            queryClient.invalidateQueries({ queryKey: ['readContract'] });
+            setIsSubmitting(false);
+            onSuccess();
+          }, 3000);
           
         } else {
           // Jalur EOA (Standard Gas)
