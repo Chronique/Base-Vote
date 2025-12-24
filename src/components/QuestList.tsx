@@ -11,24 +11,32 @@ import { AnimatePresence, motion } from "framer-motion";
 export default function QuestList() {
   const [globalIndex, setGlobalIndex] = useState(0);
   const [isCycleActive, setIsCycleActive] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0); 
 
+  // Ambil 30 Poll terbaru
   const { data: pollIds, isLoading } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "getPollsPaged",
-    args: [0n, 20n],
+    args: [0n, 30n],
     chainId: base.id
   });
 
   const allPollIds = useMemo(() => {
     if (!pollIds || !Array.isArray(pollIds)) return [];
+    // Urutan dari kontrak sudah Newest First
     return pollIds.map(id => Number(id)); 
-  }, [pollIds]);
+  }, [pollIds, refreshKey]);
+
+  const handleRefresh = () => {
+    // Tombol refresh manual yang memicu reload halaman penuh
+    window.location.reload();
+  };
 
   const handleSwipe = (direction: "left" | "right") => {
     const nextIndex = globalIndex + 1;
 
-    // Jika arah vote (kanan) ATAU kartu sudah habis, aktifkan CycleMeme
+    // Jika VOTE (Kanan) atau Kartu Habis (Kiri) -> Masuk ke CycleMeme
     if (direction === "right" || nextIndex >= allPollIds.length) {
       setTimeout(() => setIsCycleActive(true), 400);
     } else {
@@ -42,6 +50,7 @@ export default function QuestList() {
     <div className="relative w-full h-[400px] flex flex-col items-center justify-center">
       <div className="relative w-full h-80 flex items-center justify-center perspective-1000">
         <AnimatePresence mode="wait">
+          {/* TAMPILAN CYCLE MEME (Jika aktif atau kartu kosong) */}
           {isCycleActive || allPollIds.length === 0 ? (
             <motion.div 
               key="cycle-screen"
@@ -50,12 +59,12 @@ export default function QuestList() {
               exit={{ opacity: 0 }}
               className="w-full h-full flex items-center justify-center"
             >
-              {/* Tombol reload dipindah ke sini secara manual */}
-              <CycleMeme onRefresh={() => window.location.reload()} />
+              <CycleMeme onRefresh={handleRefresh} />
             </motion.div>
           ) : (
+            /* PEMBUNGKUS WAJIB AGAR TIDAK BLANK SAAT TRANSISI */
             <motion.div 
-              key="stack-wrapper" // PEMBUNGKUS WAJIB AGAR TIDAK BLANK
+              key={`stack-${refreshKey}`}
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }}
@@ -67,7 +76,7 @@ export default function QuestList() {
                 const pid = allPollIds[cardIdx];
                 return (
                   <SwipeCard 
-                    key={pid} 
+                    key={`${pid}-${refreshKey}`} 
                     pollId={pid} 
                     onSwipe={handleSwipe} 
                     index={offset} 
