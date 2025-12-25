@@ -28,7 +28,6 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
     hash: txHash,
   });
 
-  // Sinkronkan data di background tanpa reload halaman penuh
   useEffect(() => {
     if (isTxConfirmed) {
       queryClient.invalidateQueries({ queryKey: ['readContract'] });
@@ -46,8 +45,7 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
 
   const capabilities = useMemo(() => {
     const paymasterUrl = process.env.NEXT_PUBLIC_PAYMASTER_URL;
-    const attribution = Attribution.toDataSuffix({ codes: ["bc_9fbxmq2a"] });
-
+    const attribution = Attribution.toDataSuffix({ codes: ["bc_9fbxmq2a"] }); // Builder Code
     if (usePaymaster && canUsePaymaster && paymasterUrl) {
         return { paymasterService: { url: paymasterUrl }, dataSuffix: attribution };
     }
@@ -57,7 +55,6 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
   const handleCreate = async () => {
     if (!question || !opt1 || !opt2) return;
     setIsSubmitting(true);
-    
     try {
         const encodedData = encodeFunctionData({
             abi: FACTORY_ABI, functionName: "createPoll", args: [question, opt1, opt2, BigInt(duration)] 
@@ -68,72 +65,41 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
               calls: [{ to: FACTORY_ADDRESS as `0x${string}`, data: encodedData }],
               capabilities: capabilities as any
           });
-          
           setTimeout(() => {
             queryClient.invalidateQueries({ queryKey: ['readContract'] });
             setIsSubmitting(false);
             onSuccess();
           }, 3000);
-          
         } else {
           const hash = await writeContractAsync({
-            address: FACTORY_ADDRESS as `0x${string}`,
-            abi: FACTORY_ABI,
-            functionName: "createPoll",
-            args: [question, opt1, opt2, BigInt(duration)]
+            address: FACTORY_ADDRESS as `0x${string}`, abi: FACTORY_ABI,
+            functionName: "createPoll", args: [question, opt1, opt2, BigInt(duration)]
           });
           setTxHash(hash);
         }
-
-    } catch (err) {
-        setIsSubmitting(false);
-    }
+    } catch (err) { setIsSubmitting(false); }
   };
 
   return (
     <div className="bg-white dark:bg-gray-900 border p-6 rounded-3xl shadow-lg flex flex-col gap-4">
-      <input 
-        value={question} 
-        onChange={(e) => setQuestion(e.target.value)} 
-        placeholder="What's the question?" 
-        className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl outline-none border border-transparent focus:border-blue-500 transition-all" 
-      />
-      
+      <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="What's the question?" className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl outline-none border border-transparent focus:border-blue-500 transition-all" />
       <div className="grid grid-cols-2 gap-3">
           <input value={opt1} onChange={(e) => setOpt1(e.target.value)} placeholder="Option 1" className="p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border-none outline-none" />
           <input value={opt2} onChange={(e) => setOpt2(e.target.value)} placeholder="Option 2" className="p-3 bg-pink-50/50 dark:bg-pink-900/10 rounded-xl border-none outline-none" />
       </div>
-
       <div className="grid grid-cols-4 gap-2">
           {[ {l: '1D', v: 86400}, {l: '1W', v: 604800}, {l: '1M', v: 2592000}, {l: '1Y', v: 31536000} ].map((d) => (
-              <button 
-                key={d.v} 
-                onClick={() => setDuration(d.v)} 
-                className={`py-2 text-[10px] font-black rounded-lg border transition-all ${duration === d.v ? 'bg-blue-600 border-blue-600 text-white' : 'bg-gray-50 text-gray-400 border-transparent'}`}
-              >
-                  {d.l}
-              </button>
+              <button key={d.v} onClick={() => setDuration(d.v)} className={`py-2 text-[10px] font-black rounded-lg border transition-all ${duration === d.v ? 'bg-blue-600 border-blue-600 text-white' : 'bg-gray-50 text-gray-400 border-transparent'}`}>{d.l}</button>
           ))}
       </div>
-
       {canUsePaymaster && (
           <div className="flex justify-center mt-2">
-              <div 
-                className={`flex items-center gap-2 px-5 py-2 rounded-full cursor-pointer border transition-all ${usePaymaster ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 border-transparent'}`} 
-                onClick={() => setUsePaymaster(!usePaymaster)}
-              >
-                  <span className="text-[10px] font-black uppercase flex items-center gap-1">
-                    GAS SPONSORED <MdBolt className={usePaymaster ? "text-yellow-300 animate-pulse" : ""} />
-                  </span>
+              <div className={`flex items-center gap-2 px-5 py-2 rounded-full cursor-pointer border transition-all ${usePaymaster ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 border-transparent'}`} onClick={() => setUsePaymaster(!usePaymaster)}>
+                  <span className="text-[10px] font-black uppercase flex items-center gap-1">GAS SPONSORED <MdBolt className={usePaymaster ? "text-yellow-300 animate-pulse" : ""} /></span>
               </div>
           </div>
       )}
-
-      <button 
-        onClick={handleCreate} 
-        disabled={isSubmitting || isWaiting || !question || !opt1 || !opt2} 
-        className="mt-2 w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 disabled:opacity-50 transition-all"
-      >
+      <button onClick={handleCreate} disabled={isSubmitting || isWaiting || !question} className="mt-2 w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 disabled:opacity-50 transition-all">
           {isSubmitting || isWaiting ? (isWaiting ? "CONFIRMING..." : "SENDING...") : "CREATE POLL"}
       </button>
     </div>

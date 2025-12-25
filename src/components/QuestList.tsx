@@ -8,10 +8,12 @@ import SwipeCard from "./SwipeCard";
 import CycleMeme from "./CycleMeme"; 
 import { AnimatePresence, motion } from "framer-motion";
 
-export default function QuestList() {
+// Menambahkan prop initialMeme untuk mendukung pengalihan dari CreateQuest
+export default function QuestList({ initialMeme = false }: { initialMeme?: boolean }) {
   const [globalIndex, setGlobalIndex] = useState(0);
-  const [isCycleActive, setIsCycleActive] = useState(false);
+  const [isCycleActive, setIsCycleActive] = useState(initialMeme);
 
+  // Ambil 30 Poll terbaru
   const { data: pollIds, isLoading } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
@@ -25,22 +27,22 @@ export default function QuestList() {
     return pollIds.map(id => Number(id)); 
   }, [pollIds]);
 
-  // Reset posisi ke kartu pertama hanya jika ada data baru yang masuk (misal setelah buat poll)
+  // Efek untuk menangani sinkronisasi data
   useEffect(() => {
-    if (pollIds && pollIds.length > 0) {
+    if (pollIds && pollIds.length > 0 && !initialMeme) {
       setGlobalIndex(0);
       setIsCycleActive(false);
     }
-  }, [pollIds]);
+  }, [pollIds, initialMeme]);
 
   const handleManualRefresh = () => {
-    window.location.reload(); 
+    window.location.reload(); // Pemicu reload penuh saat LFG diklik
   };
 
   const handleSwipe = (direction: "left" | "right") => {
     const nextIndex = globalIndex + 1;
 
-    // Masuk ke CycleMeme jika Vote (Kanan) atau kartu di tumpukan sudah habis (Kiri)
+    // LOGIKA: Jika VOTE (Kanan) ATAU Kartu Habis -> Masuk ke CycleMeme
     if (direction === "right" || nextIndex >= allPollIds.length) {
       setTimeout(() => setIsCycleActive(true), 400);
     } else {
@@ -48,7 +50,8 @@ export default function QuestList() {
     }
   };
 
-  if (isLoading) return (
+  // Loading state yang tidak mengganggu transisi
+  if (isLoading && allPollIds.length === 0) return (
     <div className="h-64 flex items-center justify-center text-gray-400 font-black animate-pulse uppercase text-[10px]">
       Syncing Base...
     </div>
@@ -58,8 +61,7 @@ export default function QuestList() {
     <div className="relative w-full h-[400px] flex flex-col items-center justify-center">
       <div className="relative w-full h-80 flex items-center justify-center perspective-1000">
         <AnimatePresence mode="wait">
-          {/* Tampilkan CycleMeme hanya jika aktif atau benar-benar tidak ada data setelah loading selesai */}
-          {isCycleActive || (!isLoading && allPollIds.length === 0) ? (
+          {isCycleActive || allPollIds.length === 0 ? (
             <motion.div 
               key="cycle-screen"
               initial={{ opacity: 0, scale: 0.9 }} 
@@ -71,7 +73,7 @@ export default function QuestList() {
             </motion.div>
           ) : (
             <motion.div 
-              key={`stack-container-${globalIndex}`} // Menggunakan index sebagai key agar transisi antar kartu tidak blank
+              key={`stack-container-${globalIndex}`} // Key dinamis untuk mencegah layar blank
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }}

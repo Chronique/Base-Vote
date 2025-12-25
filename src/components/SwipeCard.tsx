@@ -37,29 +37,22 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
 
   const capabilities = useMemo(() => {
     const paymasterUrl = process.env.NEXT_PUBLIC_PAYMASTER_URL;
-    const attribution = Attribution.toDataSuffix({ codes: ["bc_9fbxmq2a"] });
+    const attribution = Attribution.toDataSuffix({ codes: ["bc_9fbxmq2a"] }); // Builder Code
     if (useGas && canUsePaymaster && paymasterUrl) {
         return { paymasterService: { url: paymasterUrl }, dataSuffix: attribution };
     }
     return { dataSuffix: attribution };
   }, [canUsePaymaster, useGas]);
 
-  // === BAGIAN DATA DENGAN LOADING STATE ===
   const { data: pollData, isLoading: isCardLoading } = useReadContract({
-    address: FACTORY_ADDRESS as `0x${string}`, 
-    abi: FACTORY_ABI,
-    functionName: "getPollInfo", 
-    args: [BigInt(pollId)], 
-    chainId: base.id
+    address: FACTORY_ADDRESS as `0x${string}`, abi: FACTORY_ABI,
+    functionName: "getPollInfo", args: [BigInt(pollId)], chainId: base.id
   });
 
   const { data: hasVoted } = useReadContract({
-    address: FACTORY_ADDRESS as `0x${string}`, 
-    abi: FACTORY_ABI,
-    functionName: "hasVoted", 
-    args: userAddress ? [BigInt(pollId), userAddress] : undefined,
-    query: { enabled: !!userAddress }, 
-    chainId: base.id
+    address: FACTORY_ADDRESS as `0x${string}`, abi: FACTORY_ABI,
+    functionName: "hasVoted", args: userAddress ? [BigInt(pollId), userAddress] : undefined,
+    query: { enabled: !!userAddress }, chainId: base.id
   });
 
   const x = useMotionValue(0);
@@ -67,8 +60,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   const opacity = useTransform(x, [-300, -150, 0, 150, 300], [0, 1, 1, 1, 0]);
   const activeBg = resolvedTheme === "dark" ? "#111827" : "#ffffff";
 
-  // === BAGIAN YANG ANDA TANYAKAN (SKELETON UI) ===
-  // Letaknya tepat setelah hooks useReadContract dan sebelum logika handleVote
+  // SKELETON UI: Mencegah layar blank saat data kartu sedang ditarik
   if (isCardLoading || !pollData) {
     return (
       <motion.div
@@ -99,18 +91,15 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
             await writeContractAsync({ address: FACTORY_ADDRESS as `0x${string}`, abi: FACTORY_ABI, functionName: "vote", args: [BigInt(pollId), BigInt(confirmChoice)] });
         }
 
-        setLocalVoted(true); 
-        setIsVotingLoading(false);
-        setShowSelection(false);
+        setLocalVoted(true); setIsVotingLoading(false); setShowSelection(false);
 
+        // Setelah vote, geser kartu dan panggil onSwipe("right") untuk memicu CycleMeme
         setTimeout(async () => {
             await animate(x, 1000, { duration: 0.4 });
             onSwipe("right"); 
         }, 1200);
 
-    } catch (e) {
-        setIsVotingLoading(false);
-    }
+    } catch (e) { setIsVotingLoading(false); }
   };
 
   return (
