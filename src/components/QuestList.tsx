@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useReadContract } from "wagmi";
 import { base } from "wagmi/chains";
 import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants";
@@ -11,9 +11,7 @@ import { AnimatePresence, motion } from "framer-motion";
 export default function QuestList() {
   const [globalIndex, setGlobalIndex] = useState(0);
   const [isCycleActive, setIsCycleActive] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0); 
 
-  // Ambil 30 Poll terbaru
   const { data: pollIds, isLoading } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
@@ -24,19 +22,25 @@ export default function QuestList() {
 
   const allPollIds = useMemo(() => {
     if (!pollIds || !Array.isArray(pollIds)) return [];
-    // Urutan dari kontrak sudah Newest First
     return pollIds.map(id => Number(id)); 
-  }, [pollIds, refreshKey]);
+  }, [pollIds]);
 
-  const handleRefresh = () => {
-    // Tombol refresh manual yang memicu reload halaman penuh
-    window.location.reload();
+  // Reset posisi ke kartu pertama hanya jika ada data baru yang masuk (misal setelah buat poll)
+  useEffect(() => {
+    if (pollIds && pollIds.length > 0) {
+      setGlobalIndex(0);
+      setIsCycleActive(false);
+    }
+  }, [pollIds]);
+
+  const handleManualRefresh = () => {
+    window.location.reload(); 
   };
 
   const handleSwipe = (direction: "left" | "right") => {
     const nextIndex = globalIndex + 1;
 
-    // Jika VOTE (Kanan) atau Kartu Habis (Kiri) -> Masuk ke CycleMeme
+    // Masuk ke CycleMeme jika Vote (Kanan) atau kartu di tumpukan sudah habis (Kiri)
     if (direction === "right" || nextIndex >= allPollIds.length) {
       setTimeout(() => setIsCycleActive(true), 400);
     } else {
@@ -44,14 +48,18 @@ export default function QuestList() {
     }
   };
 
-  if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-black animate-pulse uppercase text-[10px]">Syncing Base...</div>;
+  if (isLoading) return (
+    <div className="h-64 flex items-center justify-center text-gray-400 font-black animate-pulse uppercase text-[10px]">
+      Syncing Base...
+    </div>
+  );
 
   return (
     <div className="relative w-full h-[400px] flex flex-col items-center justify-center">
       <div className="relative w-full h-80 flex items-center justify-center perspective-1000">
         <AnimatePresence mode="wait">
-          {/* TAMPILAN CYCLE MEME (Jika aktif atau kartu kosong) */}
-          {isCycleActive || allPollIds.length === 0 ? (
+          {/* Tampilkan CycleMeme hanya jika aktif atau benar-benar tidak ada data setelah loading selesai */}
+          {isCycleActive || (!isLoading && allPollIds.length === 0) ? (
             <motion.div 
               key="cycle-screen"
               initial={{ opacity: 0, scale: 0.9 }} 
@@ -59,12 +67,11 @@ export default function QuestList() {
               exit={{ opacity: 0 }}
               className="w-full h-full flex items-center justify-center"
             >
-              <CycleMeme onRefresh={handleRefresh} />
+              <CycleMeme onRefresh={handleManualRefresh} />
             </motion.div>
           ) : (
-            /* PEMBUNGKUS WAJIB AGAR TIDAK BLANK SAAT TRANSISI */
             <motion.div 
-              key={`stack-${refreshKey}`}
+              key={`stack-container-${globalIndex}`} // Menggunakan index sebagai key agar transisi antar kartu tidak blank
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }}
@@ -76,7 +83,7 @@ export default function QuestList() {
                 const pid = allPollIds[cardIdx];
                 return (
                   <SwipeCard 
-                    key={`${pid}-${refreshKey}`} 
+                    key={pid} 
                     pollId={pid} 
                     onSwipe={handleSwipe} 
                     index={offset} 

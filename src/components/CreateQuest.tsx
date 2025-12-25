@@ -24,19 +24,18 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
   const { sendCallsAsync } = useSendCalls(); 
   const { writeContractAsync } = useWriteContract();
 
-  // Menunggu konfirmasi transaksi di blockchain
   const { isSuccess: isTxConfirmed, isLoading: isWaiting } = useWaitForTransactionReceipt({
     hash: txHash,
   });
 
-  // Jika transaksi sukses, bersihkan cache dan panggil onSuccess (tanpa reload halaman)
+  // Sinkronkan data di background tanpa reload halaman penuh
   useEffect(() => {
     if (isTxConfirmed) {
       queryClient.invalidateQueries({ queryKey: ['readContract'] });
       setQuestion(""); setOpt1(""); setOpt2("");
       setIsSubmitting(false);
       setTxHash(undefined);
-      onSuccess(); // Memberitahu parent bahwa proses selesai
+      onSuccess(); 
     }
   }, [isTxConfirmed, queryClient, onSuccess]);
 
@@ -50,10 +49,7 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
     const attribution = Attribution.toDataSuffix({ codes: ["bc_9fbxmq2a"] });
 
     if (usePaymaster && canUsePaymaster && paymasterUrl) {
-        return {
-          paymasterService: { url: paymasterUrl },
-          dataSuffix: attribution
-        };
+        return { paymasterService: { url: paymasterUrl }, dataSuffix: attribution };
     }
     return { dataSuffix: attribution };
   }, [canUsePaymaster, usePaymaster]);
@@ -64,19 +60,15 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
     
     try {
         const encodedData = encodeFunctionData({
-            abi: FACTORY_ABI,
-            functionName: "createPoll",
-            args: [question, opt1, opt2, BigInt(duration)] 
+            abi: FACTORY_ABI, functionName: "createPoll", args: [question, opt1, opt2, BigInt(duration)] 
         });
 
         if (usePaymaster && canUsePaymaster) {
-          // Jalur Smart Wallet (Gasless)
           await sendCallsAsync({
               calls: [{ to: FACTORY_ADDRESS as `0x${string}`, data: encodedData }],
               capabilities: capabilities as any
           });
           
-          // Setelah kirim, bersihkan cache dan panggil onSuccess
           setTimeout(() => {
             queryClient.invalidateQueries({ queryKey: ['readContract'] });
             setIsSubmitting(false);
@@ -84,7 +76,6 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
           }, 3000);
           
         } else {
-          // Jalur EOA (Standard Gas)
           const hash = await writeContractAsync({
             address: FACTORY_ADDRESS as `0x${string}`,
             abi: FACTORY_ABI,
@@ -95,7 +86,6 @@ export default function CreateQuest({ onSuccess }: { onSuccess: () => void }) {
         }
 
     } catch (err) {
-        console.error("Create Poll Error:", err);
         setIsSubmitting(false);
     }
   };

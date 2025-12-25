@@ -44,15 +44,22 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
     return { dataSuffix: attribution };
   }, [canUsePaymaster, useGas]);
 
-  const { data: pollData } = useReadContract({
-    address: FACTORY_ADDRESS as `0x${string}`, abi: FACTORY_ABI,
-    functionName: "getPollInfo", args: [BigInt(pollId)], chainId: base.id
+  // === BAGIAN DATA DENGAN LOADING STATE ===
+  const { data: pollData, isLoading: isCardLoading } = useReadContract({
+    address: FACTORY_ADDRESS as `0x${string}`, 
+    abi: FACTORY_ABI,
+    functionName: "getPollInfo", 
+    args: [BigInt(pollId)], 
+    chainId: base.id
   });
 
   const { data: hasVoted } = useReadContract({
-    address: FACTORY_ADDRESS as `0x${string}`, abi: FACTORY_ABI,
-    functionName: "hasVoted", args: userAddress ? [BigInt(pollId), userAddress] : undefined,
-    query: { enabled: !!userAddress }, chainId: base.id
+    address: FACTORY_ADDRESS as `0x${string}`, 
+    abi: FACTORY_ABI,
+    functionName: "hasVoted", 
+    args: userAddress ? [BigInt(pollId), userAddress] : undefined,
+    query: { enabled: !!userAddress }, 
+    chainId: base.id
   });
 
   const x = useMotionValue(0);
@@ -60,7 +67,19 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   const opacity = useTransform(x, [-300, -150, 0, 150, 300], [0, 1, 1, 1, 0]);
   const activeBg = resolvedTheme === "dark" ? "#111827" : "#ffffff";
 
-  if (!pollData) return null;
+  // === BAGIAN YANG ANDA TANYAKAN (SKELETON UI) ===
+  // Letaknya tepat setelah hooks useReadContract dan sebelum logika handleVote
+  if (isCardLoading || !pollData) {
+    return (
+      <motion.div
+        style={{ scale: index === 0 ? 1 : 0.95 }}
+        className="absolute w-full max-sm:max-w-[340px] max-w-sm h-80 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-center"
+      >
+        <div className="w-2/3 h-6 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-lg" />
+      </motion.div>
+    );
+  }
+
   const [question, opt1, votes1, opt2, votes2, endTime] = pollData as any;
   const totalVotes = Number(votes1 || 0) + Number(votes2 || 0);
   const isVotedDisplay = Boolean(hasVoted) || localVoted;
@@ -80,15 +99,18 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
             await writeContractAsync({ address: FACTORY_ADDRESS as `0x${string}`, abi: FACTORY_ABI, functionName: "vote", args: [BigInt(pollId), BigInt(confirmChoice)] });
         }
 
-        setLocalVoted(true); setIsVotingLoading(false); setShowSelection(false);
+        setLocalVoted(true); 
+        setIsVotingLoading(false);
+        setShowSelection(false);
 
-        // Feedback visual stempel "VOTED" sebelum pindah ke CycleMeme
         setTimeout(async () => {
             await animate(x, 1000, { duration: 0.4 });
-            onSwipe("right"); // Masuk ke CycleMeme melalui QuestList
+            onSwipe("right"); 
         }, 1200);
 
-    } catch (e) { setIsVotingLoading(false); }
+    } catch (e) {
+        setIsVotingLoading(false);
+    }
   };
 
   return (
@@ -139,7 +161,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                     {canUsePaymaster && (
                       <div className="mb-6 w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100">
                           <div className="flex flex-col items-start text-left">
-                              <span className="text-[10px] font-black uppercase text-gray-400 flex items-center gap-1"><MdBolt className={useGas ? "text-yellow-400" : "text-gray-300"} /> Sponsored</span>
+                              <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-1"><MdBolt className={useGas ? "text-yellow-400" : "text-gray-300"} /> Sponsored</span>
                               <span className="text-[9px] text-gray-500 font-medium">Gas: {useGas ? 'FREE' : 'USER'}</span>
                           </div>
                           <button onClick={() => setUseGas(!useGas)} className={`relative w-10 h-5 rounded-full ${useGas ? 'bg-blue-600' : 'bg-gray-300'}`}>
