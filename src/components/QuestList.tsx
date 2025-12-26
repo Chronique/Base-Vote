@@ -8,6 +8,7 @@ import SwipeCard from "./SwipeCard";
 import CycleMeme from "./CycleMeme"; 
 import { AnimatePresence, motion } from "framer-motion";
 
+// Menambahkan prop initialMeme agar sinkron dengan page.tsx
 export default function QuestList({ initialMeme = false }: { initialMeme?: boolean }) {
   const [globalIndex, setGlobalIndex] = useState(0);
   const [isCycleActive, setIsCycleActive] = useState(initialMeme);
@@ -25,29 +26,21 @@ export default function QuestList({ initialMeme = false }: { initialMeme?: boole
     return pollIds.map(id => Number(id)); 
   }, [pollIds]);
 
-  // Sinkronisasi prop initialMeme dari parent (page.tsx)
+  // Sinkronisasi isCycleActive jika initialMeme berubah dari page.tsx
   useEffect(() => {
     if (initialMeme) {
       setIsCycleActive(true);
     }
   }, [initialMeme]);
 
-  // Reset posisi kartu jika data blockchain diperbarui dan tidak dalam mode meme
-  useEffect(() => {
-    if (pollIds && pollIds.length > 0 && !initialMeme) {
-      setGlobalIndex(0);
-      setIsCycleActive(false);
-    }
-  }, [pollIds, initialMeme]);
-
-  const handleManualRefresh = () => {
-    window.location.reload(); 
+  const handleRefresh = () => {
+    window.location.reload();
   };
 
   const handleSwipe = (direction: "left" | "right") => {
     const nextIndex = globalIndex + 1;
 
-    // LOGIKA: Jika VOTE (Kanan) atau Kartu Habis -> Tampilkan Meme
+    // VOTE (Kanan) atau Kartu Habis -> Tampilkan Meme
     if (direction === "right" || nextIndex >= allPollIds.length) {
       setTimeout(() => setIsCycleActive(true), 400);
     } else {
@@ -55,11 +48,7 @@ export default function QuestList({ initialMeme = false }: { initialMeme?: boole
     }
   };
 
-  if (isLoading && allPollIds.length === 0) return (
-    <div className="h-64 flex items-center justify-center text-gray-400 font-black animate-pulse uppercase text-[10px]">
-      Syncing Base...
-    </div>
-  );
+  if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-black animate-pulse uppercase text-[10px]">Syncing Base...</div>;
 
   return (
     <div className="relative w-full h-[400px] flex flex-col items-center justify-center">
@@ -68,19 +57,15 @@ export default function QuestList({ initialMeme = false }: { initialMeme?: boole
           {isCycleActive || allPollIds.length === 0 ? (
             <motion.div 
               key="cycle-screen"
-              initial={{ opacity: 0, scale: 0.9 }} 
-              animate={{ opacity: 1, scale: 1 }} 
-              exit={{ opacity: 0 }}
+              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
               className="w-full h-full flex items-center justify-center"
             >
-              <CycleMeme onRefresh={handleManualRefresh} />
+              <CycleMeme onRefresh={handleRefresh} />
             </motion.div>
           ) : (
             <motion.div 
-              key={`stack-container-${globalIndex}`} // Key dinamis mencegah blank
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }}
+              key={`stack-container-${globalIndex}`} // KEY HARUS BERUBAH TIAP SWIPE AGAR TIDAK BLANK
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="relative w-full h-full flex items-center justify-center"
             >
               {[0, 1].map((offset) => {

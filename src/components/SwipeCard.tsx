@@ -37,14 +37,14 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
 
   const capabilities = useMemo(() => {
     const paymasterUrl = process.env.NEXT_PUBLIC_PAYMASTER_URL;
-    const attribution = Attribution.toDataSuffix({ codes: ["bc_9fbxmq2a"] }); // Builder Code
+    const attribution = Attribution.toDataSuffix({ codes: ["bc_9fbxmq2a"] });
     if (useGas && canUsePaymaster && paymasterUrl) {
         return { paymasterService: { url: paymasterUrl }, dataSuffix: attribution };
     }
     return { dataSuffix: attribution };
   }, [canUsePaymaster, useGas]);
 
-  const { data: pollData, isLoading: isCardLoading } = useReadContract({
+  const { data: pollData } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`, abi: FACTORY_ABI,
     functionName: "getPollInfo", args: [BigInt(pollId)], chainId: base.id
   });
@@ -60,18 +60,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   const opacity = useTransform(x, [-300, -150, 0, 150, 300], [0, 1, 1, 1, 0]);
   const activeBg = resolvedTheme === "dark" ? "#111827" : "#ffffff";
 
-  // Skeleton UI: Menghindari layar blank saat data kartu dimuat
-  if (isCardLoading || !pollData) {
-    return (
-      <motion.div
-        style={{ scale: index === 0 ? 1 : 0.95 }}
-        className="absolute w-full max-sm:max-w-[340px] max-w-sm h-80 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-center"
-      >
-        <div className="w-2/3 h-6 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-lg" />
-      </motion.div>
-    );
-  }
-
+  if (!pollData) return null;
   const [question, opt1, votes1, opt2, votes2, endTime] = pollData as any;
   const totalVotes = Number(votes1 || 0) + Number(votes2 || 0);
   const isVotedDisplay = Boolean(hasVoted) || localVoted;
@@ -93,11 +82,11 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
 
         setLocalVoted(true); setIsVotingLoading(false); setShowSelection(false);
 
-        // Setelah vote, geser ke kanan untuk memicu CycleMeme di QuestList
+        // Langsung picu onSwipe("right") setelah animasi singkat
         setTimeout(async () => {
-            await animate(x, 1000, { duration: 0.4 });
+            await animate(x, 1000, { duration: 0.3 });
             onSwipe("right"); 
-        }, 1200);
+        }, 800);
 
     } catch (e) { setIsVotingLoading(false); }
   };
@@ -110,13 +99,11 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
       className="absolute w-full max-sm:max-w-[340px] max-w-sm h-80 rounded-3xl shadow-xl border dark:border-gray-800 flex flex-col items-center justify-center p-6 text-center overflow-hidden touch-none"
       onDragEnd={async (e, info) => {
         if (info.offset.x > 100) {
-            if (!isVotedDisplay && !isEnded) {
-                setShowSelection(true); animate(x, 0);
-            } else { animate(x, 0); }
+            if (!isVotedDisplay && !isEnded) { setShowSelection(true); animate(x, 0); } else { animate(x, 0); }
         } else if (info.offset.x < -100) {
             await animate(x, -1000, { duration: 0.3 });
             onSwipe("left");
-        } else { animate(x, 0, { type: "spring", stiffness: 300, damping: 30 }); }
+        } else { animate(x, 0); }
       }}
     >
       <AnimatePresence>
@@ -136,7 +123,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
       <h3 className="text-2xl font-black leading-tight px-4 text-gray-900 dark:text-white z-10">{question}</h3>
 
       {showSelection && !isVotedDisplay && (
-        <div className="absolute inset-0 z-[60] bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6 transition-all">
+        <div className="absolute inset-0 z-[60] bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6">
             {!confirmChoice ? (
                 <div className="w-full flex flex-col gap-3 px-4">
                     <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-bold rounded-2xl border border-blue-100">{opt1}</button>
@@ -146,11 +133,10 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
             ) : (
                 <div className="w-full flex flex-col items-center px-4">
                     <p className="text-lg font-black mb-6 dark:text-white text-center leading-tight">"{confirmChoice === 1 ? opt1 : opt2}"</p>
-                    
                     {canUsePaymaster && (
                       <div className="mb-6 w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100">
                           <div className="flex flex-col items-start text-left">
-                              <span className="text-[10px] font-black uppercase text-gray-400 flex items-center gap-1"><MdBolt className={useGas ? "text-yellow-400" : "text-gray-300"} /> Sponsored</span>
+                              <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-1"><MdBolt className={useGas ? "text-yellow-400" : "text-gray-300"} /> Sponsored</span>
                               <span className="text-[9px] text-gray-500 font-medium">Gas: {useGas ? 'FREE' : 'USER'}</span>
                           </div>
                           <button onClick={() => setUseGas(!useGas)} className={`relative w-10 h-5 rounded-full ${useGas ? 'bg-blue-600' : 'bg-gray-300'}`}>
@@ -158,11 +144,9 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                           </button>
                       </div>
                     )}
-
                     <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 disabled:opacity-50 transition-transform">
                         {isVotingLoading ? "SIGNING..." : "CONFIRM VOTE"}
                     </button>
-                    <button onClick={() => setConfirmChoice(null)} className="mt-4 text-[10px] font-black text-gray-400 uppercase">Change</button>
                 </div>
             )}
         </div>
