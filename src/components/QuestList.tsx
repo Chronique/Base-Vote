@@ -8,12 +8,10 @@ import SwipeCard from "./SwipeCard";
 import CycleMeme from "./CycleMeme"; 
 import { AnimatePresence, motion } from "framer-motion";
 
-// Menambahkan prop initialMeme untuk mendukung pengalihan dari CreateQuest
 export default function QuestList({ initialMeme = false }: { initialMeme?: boolean }) {
   const [globalIndex, setGlobalIndex] = useState(0);
   const [isCycleActive, setIsCycleActive] = useState(initialMeme);
 
-  // Ambil 30 Poll terbaru
   const { data: pollIds, isLoading } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
@@ -27,7 +25,14 @@ export default function QuestList({ initialMeme = false }: { initialMeme?: boole
     return pollIds.map(id => Number(id)); 
   }, [pollIds]);
 
-  // Efek untuk menangani sinkronisasi data
+  // Sinkronisasi prop initialMeme dari parent (page.tsx)
+  useEffect(() => {
+    if (initialMeme) {
+      setIsCycleActive(true);
+    }
+  }, [initialMeme]);
+
+  // Reset posisi kartu jika data blockchain diperbarui dan tidak dalam mode meme
   useEffect(() => {
     if (pollIds && pollIds.length > 0 && !initialMeme) {
       setGlobalIndex(0);
@@ -36,13 +41,13 @@ export default function QuestList({ initialMeme = false }: { initialMeme?: boole
   }, [pollIds, initialMeme]);
 
   const handleManualRefresh = () => {
-    window.location.reload(); // Pemicu reload penuh saat LFG diklik
+    window.location.reload(); 
   };
 
   const handleSwipe = (direction: "left" | "right") => {
     const nextIndex = globalIndex + 1;
 
-    // LOGIKA: Jika VOTE (Kanan) ATAU Kartu Habis -> Masuk ke CycleMeme
+    // LOGIKA: Jika VOTE (Kanan) atau Kartu Habis -> Tampilkan Meme
     if (direction === "right" || nextIndex >= allPollIds.length) {
       setTimeout(() => setIsCycleActive(true), 400);
     } else {
@@ -50,7 +55,6 @@ export default function QuestList({ initialMeme = false }: { initialMeme?: boole
     }
   };
 
-  // Loading state yang tidak mengganggu transisi
   if (isLoading && allPollIds.length === 0) return (
     <div className="h-64 flex items-center justify-center text-gray-400 font-black animate-pulse uppercase text-[10px]">
       Syncing Base...
@@ -73,7 +77,7 @@ export default function QuestList({ initialMeme = false }: { initialMeme?: boole
             </motion.div>
           ) : (
             <motion.div 
-              key={`stack-container-${globalIndex}`} // Key dinamis untuk mencegah layar blank
+              key={`stack-container-${globalIndex}`} // Key dinamis mencegah blank
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }}

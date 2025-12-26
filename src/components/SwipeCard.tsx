@@ -60,7 +60,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   const opacity = useTransform(x, [-300, -150, 0, 150, 300], [0, 1, 1, 1, 0]);
   const activeBg = resolvedTheme === "dark" ? "#111827" : "#ffffff";
 
-  // SKELETON UI: Mencegah layar blank saat data kartu sedang ditarik
+  // Skeleton UI: Menghindari layar blank saat data kartu dimuat
   if (isCardLoading || !pollData) {
     return (
       <motion.div
@@ -93,7 +93,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
 
         setLocalVoted(true); setIsVotingLoading(false); setShowSelection(false);
 
-        // Setelah vote, geser kartu dan panggil onSwipe("right") untuk memicu CycleMeme
+        // Setelah vote, geser ke kanan untuk memicu CycleMeme di QuestList
         setTimeout(async () => {
             await animate(x, 1000, { duration: 0.4 });
             onSwipe("right"); 
@@ -150,7 +150,7 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
                     {canUsePaymaster && (
                       <div className="mb-6 w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100">
                           <div className="flex flex-col items-start text-left">
-                              <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-1"><MdBolt className={useGas ? "text-yellow-400" : "text-gray-300"} /> Sponsored</span>
+                              <span className="text-[10px] font-black uppercase text-gray-400 flex items-center gap-1"><MdBolt className={useGas ? "text-yellow-400" : "text-gray-300"} /> Sponsored</span>
                               <span className="text-[9px] text-gray-500 font-medium">Gas: {useGas ? 'FREE' : 'USER'}</span>
                           </div>
                           <button onClick={() => setUseGas(!useGas)} className={`relative w-10 h-5 rounded-full ${useGas ? 'bg-blue-600' : 'bg-gray-300'}`}>
