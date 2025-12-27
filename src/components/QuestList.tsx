@@ -8,7 +8,6 @@ import SwipeCard from "./SwipeCard";
 import CycleMeme from "./CycleMeme"; 
 import { AnimatePresence, motion } from "framer-motion";
 
-// Menambahkan prop initialMeme agar sinkron dengan page.tsx
 export default function QuestList({ initialMeme = false }: { initialMeme?: boolean }) {
   const [globalIndex, setGlobalIndex] = useState(0);
   const [isCycleActive, setIsCycleActive] = useState(initialMeme);
@@ -26,7 +25,6 @@ export default function QuestList({ initialMeme = false }: { initialMeme?: boole
     return pollIds.map(id => Number(id)); 
   }, [pollIds]);
 
-  // Sinkronisasi isCycleActive jika initialMeme berubah dari page.tsx
   useEffect(() => {
     if (initialMeme) {
       setIsCycleActive(true);
@@ -38,12 +36,19 @@ export default function QuestList({ initialMeme = false }: { initialMeme?: boole
   };
 
   const handleSwipe = (direction: "left" | "right") => {
-    const nextIndex = globalIndex + 1;
+    // 1. Jika VOTE (Kanan), langsung kunci ke CycleMeme
+    if (direction === "right") {
+      setIsCycleActive(true); 
+      return; // Stop eksekusi agar tidak update index lagi
+    }
 
-    // VOTE (Kanan) atau Kartu Habis -> Tampilkan Meme
-    if (direction === "right" || nextIndex >= allPollIds.length) {
-      setTimeout(() => setIsCycleActive(true), 400);
+    // 2. Jika SKIP/CANCEL (Kiri), cek kartu berikutnya
+    const nextIndex = globalIndex + 1;
+    if (nextIndex >= allPollIds.length) {
+      // Jika kartu sudah habis setelah skip
+      setIsCycleActive(true);
     } else {
+      // Pindah ke kartu berikutnya dalam stack
       setGlobalIndex(nextIndex);
     }
   };
@@ -57,15 +62,19 @@ export default function QuestList({ initialMeme = false }: { initialMeme?: boole
           {isCycleActive || allPollIds.length === 0 ? (
             <motion.div 
               key="cycle-screen"
-              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+              initial={{ opacity: 0, scale: 0.9 }} 
+              animate={{ opacity: 1, scale: 1 }} 
+              exit={{ opacity: 0 }}
               className="w-full h-full flex items-center justify-center"
             >
               <CycleMeme onRefresh={handleRefresh} />
             </motion.div>
           ) : (
             <motion.div 
-              key={`stack-container-${globalIndex}`} // KEY HARUS BERUBAH TIAP SWIPE AGAR TIDAK BLANK
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              key={`stack-container-${globalIndex}`} 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
               className="relative w-full h-full flex items-center justify-center"
             >
               {[0, 1].map((offset) => {

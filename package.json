@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "postinstall": "rimraf node_modules/thread-stream/test"
+  "dev": "next dev",
+  "build": "next build", 
+  "start": "next start",
+  "lint": "next lint",
+  "postinstall": "rimraf node_modules/thread-stream/test"
   },
   "dependencies": {
     "@base-org/account": "^2.5.0",

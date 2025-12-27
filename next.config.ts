@@ -1,8 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Matikan indikator dev (opsional, biar gak warning)
-  // devIndicators: false, 
+  // Properti 'eslint' dihapus karena tidak lagi didukung di tipe NextConfig
+
+  // Tetap gunakan properti lain yang masih didukung
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 
   images: {
     remotePatterns: [
@@ -26,28 +30,23 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
+  // Gunakan experimental settings untuk stabilitas build di Vercel
+  experimental: {
+    workerThreads: false,
+    cpus: 1,
   },
 
   serverExternalPackages: ["pino", "pino-pretty", "lokijs", "encoding", "thread-stream"],
   
   webpack: (config) => { 
-    // 1. Ignore modul-modul server/logger yang suka bikin error di browser
     config.externals.push("pino-pretty", "lokijs", "encoding");
     
-    // 2. Fallback untuk modul nodejs yang tidak ada di browser
     config.resolve.fallback = { 
       fs: false, 
       net: false, 
       tls: false 
     };
 
-    // === INI PERBAIKAN PENTINGNYA ===
-    // Memaksa webpack mengabaikan modul React Native agar build Vercel SUKSES
     config.resolve.alias = {
       ...config.resolve.alias,
       '@react-native-async-storage/async-storage': false,
