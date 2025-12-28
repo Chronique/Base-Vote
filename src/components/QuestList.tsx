@@ -6,17 +6,25 @@ import { base } from "wagmi/chains";
 import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants";
 import SwipeCard from "./SwipeCard";
 import CycleMeme from "./CycleMeme"; 
+import ProductTour from "./ProductTour"; // Kita buat di bawah
 import { AnimatePresence, motion } from "framer-motion";
 
-export default function QuestList({ initialMeme = false }: { initialMeme?: boolean }) {
+export default function QuestList() {
   const [globalIndex, setGlobalIndex] = useState(0);
-  const [isCycleActive, setIsCycleActive] = useState(initialMeme);
+  const [isCycleActive, setIsCycleActive] = useState(false);
+  const [showTour, setShowTour] = useState(false);
+
+  // Cek apakah user pertama kali datang untuk product tour
+  useEffect(() => {
+    const hasSeenTour = localStorage.getItem("quest_tour_seen");
+    if (!hasSeenTour) setShowTour(true);
+  }, []);
 
   const { data: pollIds, isLoading } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "getPollsPaged",
-    args: [0n, 30n],
+    args: [0n, 50n], // Ambil lebih banyak kartu
     chainId: base.id
   });
 
@@ -25,74 +33,60 @@ export default function QuestList({ initialMeme = false }: { initialMeme?: boole
     return pollIds.map(id => Number(id)); 
   }, [pollIds]);
 
-  useEffect(() => {
-    if (initialMeme) {
-      setIsCycleActive(true);
-    }
-  }, [initialMeme]);
-
-  const handleRefresh = () => {
-    window.location.reload();
-  };
-
   const handleSwipe = (direction: "left" | "right") => {
-    // 1. Jika VOTE (Kanan), langsung kunci ke CycleMeme
+    const nextIndex = globalIndex + 1;
+
+    // JIKA VOTE (Kanan) -> Langsung CycleMeme
     if (direction === "right") {
-      setIsCycleActive(true); 
-      return; // Stop eksekusi agar tidak update index lagi
+      setIsCycleActive(true);
+      setGlobalIndex(nextIndex); // Siapkan kartu berikutnya di balik layar
+      return;
     }
 
-    // 2. Jika SKIP/CANCEL (Kiri), cek kartu berikutnya
-    const nextIndex = globalIndex + 1;
-    if (nextIndex >= allPollIds.length) {
-      // Jika kartu sudah habis setelah skip
+    // JIKA SKIP (Kiri) -> Cek apakah sudah 10 kartu
+    if (nextIndex % 10 === 0 && nextIndex !== 0) {
+      setIsCycleActive(true);
+      setGlobalIndex(nextIndex);
+    } else if (nextIndex >= allPollIds.length) {
       setIsCycleActive(true);
     } else {
-      // Pindah ke kartu berikutnya dalam stack
       setGlobalIndex(nextIndex);
     }
   };
 
-  if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-black animate-pulse uppercase text-[10px]">Syncing Base...</div>;
+  const handleMemeDone = () => {
+    setIsCycleActive(false);
+  };
+
+  if (isLoading) return <div className="h-64 flex items-center justify-center text-gray-400 font-black animate-pulse uppercase text-[10px]">Syncing...</div>;
 
   return (
-    <div className="relative w-full h-[400px] flex flex-col items-center justify-center">
-      <div className="relative w-full h-80 flex items-center justify-center perspective-1000">
-        <AnimatePresence mode="wait">
-          {isCycleActive || allPollIds.length === 0 ? (
-            <motion.div 
-              key="cycle-screen"
-              initial={{ opacity: 0, scale: 0.9 }} 
-              animate={{ opacity: 1, scale: 1 }} 
-              exit={{ opacity: 0 }}
-              className="w-full h-full flex items-center justify-center"
-            >
-              <CycleMeme onRefresh={handleRefresh} />
-            </motion.div>
-          ) : (
-            <motion.div 
-              key={`stack-container-${globalIndex}`} 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }}
-              className="relative w-full h-full flex items-center justify-center"
-            >
-              {[0, 1].map((offset) => {
-                const cardIdx = globalIndex + offset;
-                if (cardIdx >= allPollIds.length) return null;
-                const pid = allPollIds[cardIdx];
-                return (
-                  <SwipeCard 
-                    key={pid} 
-                    pollId={pid} 
-                    onSwipe={handleSwipe} 
-                    index={offset} 
-                  />
-                );
-              }).reverse()}
-            </motion.div>
-          )}
-        </AnimatePresence>
+    <div className="relative w-full h-[450px] flex flex-col items-center justify-center">
+      {showTour && <ProductTour onComplete={() => { setShowTour(false); localStorage.setItem("quest_tour_seen", "true"); }} />}
+
+      <AnimatePresence mode="wait">
+        {isCycleActive ? (
+          <motion.div key="meme" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full flex items-center justify-center">
+            {/* CycleMeme butuh tombol 'Next Quest' untuk panggil handleMemeDone */}
+            <CycleMeme onRefresh={handleMemeDone} />
+          </motion.div>
+        ) : (
+          <motion.div key={`stack-${globalIndex}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative w-full h-full flex items-center justify-center">
+            {allPollIds.length > globalIndex ? (
+              <SwipeCard 
+                pollId={allPollIds[globalIndex]} 
+                onSwipe={handleSwipe} 
+                index={0} 
+              />
+            ) : (
+              <div className="text-gray-400 font-black uppercase text-[10px]">No more quests</div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="mt-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">
+        Quest {globalIndex + 1} of {allPollIds.length}
       </div>
     </div>
   );

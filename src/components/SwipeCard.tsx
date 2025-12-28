@@ -6,7 +6,7 @@ import { useSendCalls, useCapabilities } from "wagmi/experimental";
 import { base } from "wagmi/chains";
 import { FACTORY_ADDRESS, FACTORY_ABI } from "~/app/constants";
 import { motion, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
-import { MdPeople, MdBolt, MdArrowBack, MdArrowForward, MdClose } from "react-icons/md";
+import { MdPeople, MdBolt, MdArrowBack, MdArrowForward } from "react-icons/md";
 import { useTheme } from "next-themes";
 import { encodeFunctionData } from "viem";
 import { Attribution } from "ox/erc8021";
@@ -29,20 +29,6 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
   const { data: availableCapabilities } = useCapabilities({ account: userAddress });
   const { sendCallsAsync } = useSendCalls();         
   const { writeContractAsync } = useWriteContract(); 
-
-  const canUsePaymaster = useMemo(() => {
-    if (!availableCapabilities || !chain) return false;
-    return !!availableCapabilities[chain.id]?.["paymasterService"]?.supported && !!process.env.NEXT_PUBLIC_PAYMASTER_URL;
-  }, [availableCapabilities, chain]);
-
-  const capabilities = useMemo(() => {
-    const paymasterUrl = process.env.NEXT_PUBLIC_PAYMASTER_URL;
-    const attribution = Attribution.toDataSuffix({ codes: ["bc_9fbxmq2a"] });
-    if (useGas && canUsePaymaster && paymasterUrl) {
-        return { paymasterService: { url: paymasterUrl }, dataSuffix: attribution };
-    }
-    return { dataSuffix: attribution };
-  }, [canUsePaymaster, useGas]);
 
   const { data: pollData } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`, abi: FACTORY_ABI,
@@ -74,38 +60,25 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
             abi: FACTORY_ABI, functionName: "vote", args: [BigInt(pollId), BigInt(confirmChoice)]
         });
 
-        if (useGas && canUsePaymaster) {
+        if (useGas && !!process.env.NEXT_PUBLIC_PAYMASTER_URL) {
             await sendCallsAsync({ 
                 calls: [{ to: FACTORY_ADDRESS as `0x${string}`, data: encodedData }], 
-                capabilities: capabilities as any 
+                capabilities: { paymasterService: { url: process.env.NEXT_PUBLIC_PAYMASTER_URL }, dataSuffix: Attribution.toDataSuffix({ codes: ["bc_9fbxmq2a"] }) } as any 
             });
         } else {
-            await writeContractAsync({ 
-                address: FACTORY_ADDRESS as `0x${string}`, 
-                abi: FACTORY_ABI, 
-                functionName: "vote", 
-                args: [BigInt(pollId), BigInt(confirmChoice)] 
-            });
+            await writeContractAsync({ address: FACTORY_ADDRESS as `0x${string}`, abi: FACTORY_ABI, functionName: "vote", args: [BigInt(pollId), BigInt(confirmChoice)] });
         }
 
-        // 1. Set status lokal agar UI berubah ke "VOTED"
-        setLocalVoted(true); 
-        setIsVotingLoading(false); 
+        setLocalVoted(true);
+        setIsVotingLoading(false);
 
-        // 2. Animasi kartu keluar ke kanan dan pindah ke CycleMeme
-        await animate(x, 1000, { duration: 0.5 });
-        onSwipe("right"); 
+        // Langsung buang kartu dan ke CycleMeme
+        x.set(1000); 
+        setTimeout(() => onSwipe("right"), 200);
 
     } catch (e) { 
-        console.error("Voting error:", e);
         setIsVotingLoading(false); 
     }
-  };
-
-  const closeSelection = () => {
-    setShowSelection(false);
-    setConfirmChoice(null);
-    animate(x, 0);
   };
 
   return (
@@ -116,105 +89,46 @@ const SwipeCard = memo(function SwipeCard({ pollId, onSwipe, index }: Props) {
       className="absolute w-full max-sm:max-w-[340px] max-w-sm h-80 rounded-3xl shadow-xl border dark:border-gray-800 flex flex-col items-center justify-center p-6 text-center overflow-hidden touch-none"
       onDragEnd={async (e, info) => {
         if (info.offset.x > 100) {
-            if (!isVotedDisplay && !isEnded) { 
-                setShowSelection(true); 
-                animate(x, 0); 
-            } else { 
-                animate(x, 0); 
-            }
+            if (!isVotedDisplay && !isEnded) { setShowSelection(true); animate(x, 0); } else { animate(x, 0); }
         } else if (info.offset.x < -100) {
             await animate(x, -1000, { duration: 0.3 });
             onSwipe("left");
-        } else { 
-            animate(x, 0); 
-        }
+        } else { animate(x, 0); }
       }}
     >
-      <AnimatePresence>
-          {(isEnded || isVotedDisplay) && (
-              <motion.div 
-                initial={{ scale: 3, opacity: 0, rotate: -30 }} 
-                animate={{ scale: 1, opacity: 1, rotate: -15 }} 
-                className="absolute inset-0 flex items-center justify-center z-[70] pointer-events-none"
-              >
-                  <div className={`px-6 py-2 border-[10px] rounded-xl font-black text-5xl uppercase tracking-tighter ${isEnded ? 'border-red-600/40 text-red-600/50' : 'border-green-600/40 text-green-600/50'}`}>
-                      {isEnded ? "EXPIRED" : "VOTED"}
-                  </div>
-              </motion.div>
-          )}
-      </AnimatePresence>
-
-      {/* Konten Utama Kartu */}
       <div className="absolute top-6 left-6 flex items-center gap-1 text-gray-400 font-black text-[10px] tracking-widest uppercase">
           <MdPeople className="text-sm" /> {totalVotes} Voters
       </div>
 
-      <h3 className="text-2xl font-black leading-tight px-4 text-gray-900 dark:text-white z-10">
-        {question}
-      </h3>
+      <h3 className="text-2xl font-black leading-tight px-4 text-gray-900 dark:text-white z-10">{question}</h3>
 
-      {/* Layer Pemilihan (Overlay) */}
       {showSelection && !isVotedDisplay && (
         <div className="absolute inset-0 z-[60] bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6">
-            
-            {/* Tombol Close/Cancel di Pojok Kanan Atas Overlay */}
-            <button 
-                onClick={closeSelection}
-                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 transition-colors"
-            >
-                <MdClose size={24} />
-            </button>
-
             {!confirmChoice ? (
                 <div className="w-full flex flex-col gap-3 px-4">
-                    <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Select an option</p>
-                    <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-bold rounded-2xl border border-blue-100 hover:bg-blue-100 transition-colors">{opt1}</button>
-                    <button onClick={() => setConfirmChoice(2)} className="w-full py-4 bg-pink-50 dark:bg-pink-900/20 text-pink-700 dark:text-pink-400 font-bold rounded-2xl border border-pink-100 hover:bg-pink-100 transition-colors">{opt2}</button>
-                    <button onClick={closeSelection} className="mt-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Cancel</button>
+                    <button onClick={() => setConfirmChoice(1)} className="w-full py-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-bold rounded-2xl border border-blue-100">{opt1}</button>
+                    <button onClick={() => setConfirmChoice(2)} className="w-full py-4 bg-pink-50 dark:bg-pink-900/20 text-pink-700 dark:text-pink-400 font-bold rounded-2xl border border-pink-100">{opt2}</button>
+                    <button onClick={() => { setShowSelection(false); animate(x, 0); }} className="mt-4 text-[10px] font-black text-gray-400 uppercase">Back</button>
                 </div>
             ) : (
                 <div className="w-full flex flex-col items-center px-4">
-                    <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Confirm your vote</p>
                     <p className="text-lg font-black mb-6 dark:text-white text-center leading-tight">"{confirmChoice === 1 ? opt1 : opt2}"</p>
-                    
-                    {canUsePaymaster && (
-                      <div className="mb-6 w-full flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100">
-                          <div className="flex flex-col items-start text-left">
-                              <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-1"><MdBolt className={useGas ? "text-yellow-400" : "text-gray-300"} /> Sponsored</span>
-                              <span className="text-[9px] text-gray-500 font-medium">Gas: {useGas ? 'FREE' : 'USER'}</span>
-                          </div>
-                          <button onClick={() => setUseGas(!useGas)} className={`relative w-10 h-5 rounded-full ${useGas ? 'bg-blue-600' : 'bg-gray-300'}`}>
-                              <div className={`absolute top-1 left-1 bg-white w-3 h-3 rounded-full transition-transform ${useGas ? 'translate-x-5' : 'translate-x-0'}`} />
-                          </button>
-                      </div>
-                    )}
-
-                    <div className="flex flex-col w-full gap-3">
-                        <button 
-                            onClick={handleVote} 
-                            disabled={isVotingLoading} 
-                            className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 disabled:opacity-50 transition-transform"
-                        >
-                            {isVotingLoading ? "SIGNING..." : "CONFIRM VOTE"}
-                        </button>
-                        <button 
-                            onClick={() => setConfirmChoice(null)} 
-                            disabled={isVotingLoading}
-                            className="text-[10px] font-black text-gray-400 uppercase tracking-widest"
-                        >
-                            Back to Options
-                        </button>
-                    </div>
+                    <button onClick={handleVote} disabled={isVotingLoading} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 disabled:opacity-50 transition-transform">
+                        {isVotingLoading ? "SIGNING..." : "CONFIRM VOTE"}
+                    </button>
                 </div>
             )}
         </div>
       )}
 
-      {/* Footer Hint */}
       {!showSelection && (
-        <div className="absolute bottom-6 flex justify-between w-full px-10 font-black text-[10px] tracking-widest uppercase text-gray-400 z-10">
-            <div className="flex items-center gap-1"><MdArrowBack /> SKIP</div>
-            <div className={`${isVotedDisplay ? 'text-green-500' : 'text-blue-600 animate-pulse'} flex items-center gap-1`}>
+        <div className="absolute bottom-6 flex justify-between w-full px-10 font-black text-[10px] tracking-widest uppercase z-10">
+            {/* SKIP COLOR LOGIC */}
+            <div className={`flex items-center gap-1 ${isVotedDisplay ? 'text-green-500' : 'text-red-500/70'}`}>
+                <MdArrowBack /> SKIP
+            </div>
+            {/* VOTE COLOR LOGIC */}
+            <div className={`flex items-center gap-1 ${isVotedDisplay ? 'text-gray-400' : 'text-blue-500 animate-pulse'}`}>
                 {isVotedDisplay ? "DONE" : "VOTE"} <MdArrowForward />
             </div>
         </div>
