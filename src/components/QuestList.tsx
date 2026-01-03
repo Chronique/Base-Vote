@@ -12,12 +12,11 @@ export default function QuestList({ initialMeme = false }: { initialMeme?: boole
   const [globalIndex, setGlobalIndex] = useState(0);
   const [isCycleActive, setIsCycleActive] = useState(initialMeme);
 
-  // Mengambil data poll (di sini saya set 120 sesuai permintaan "unlimited" Anda)
   const { data: pollIds, isLoading } = useReadContract({
     address: FACTORY_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI,
     functionName: "getPollsPaged",
-    args: [0n, 120n], 
+    args: [0n, 30n],
     chainId: base.id
   });
 
@@ -30,37 +29,19 @@ export default function QuestList({ initialMeme = false }: { initialMeme?: boole
     if (initialMeme) setIsCycleActive(true);
   }, [initialMeme]);
 
-  /**
-   * Fungsi untuk melanjutkan setelah CycleMeme selesai
-   * Jika masih ada kartu tersisa, lanjut tampilkan kartu.
-   * Jika kartu sudah habis, baru lakukan reload.
-   */
-  const handleContinue = () => {
-    if (globalIndex >= allPollIds.length) {
-      window.location.reload();
-    } else {
-      setIsCycleActive(false);
-    }
-  };
+  const handleRefresh = () => window.location.reload();
 
   const handleSwipe = (direction: "left" | "right") => {
-    const nextIndex = globalIndex + 1;
-
     if (direction === "right") {
-      // VOTE Berhasil -> Update index dan tampilkan meme
-      setGlobalIndex(nextIndex);
+      // VOTE Berhasil -> Langsung aktifkan CycleMeme
       setIsCycleActive(true);
     } else {
-      // LOGIKA SKIP / CANCEL
-      setGlobalIndex(nextIndex);
-      
-      // Cek apakah sudah mencapai kelipatan 10 kartu
-      if (nextIndex > 0 && nextIndex % 10 === 0) {
+      // SKIP / CANCEL
+      const nextIndex = globalIndex + 1;
+      if (nextIndex >= allPollIds.length) {
         setIsCycleActive(true);
-      } 
-      // Cek apakah kartu sudah habis di daftar
-      else if (nextIndex >= allPollIds.length) {
-        setIsCycleActive(true);
+      } else {
+        setGlobalIndex(nextIndex);
       }
     }
   };
@@ -77,17 +58,17 @@ export default function QuestList({ initialMeme = false }: { initialMeme?: boole
         <AnimatePresence mode="wait">
           {isCycleActive || allPollIds.length === 0 ? (
             <motion.div 
-              key="meme-screen"
+              key="meme-screen" // Key penting agar tidak blank
               initial={{ opacity: 0, y: 20 }} 
               animate={{ opacity: 1, y: 0 }} 
               exit={{ opacity: 0 }}
               className="w-full h-full flex items-center justify-center"
             >
-              <CycleMeme onRefresh={handleContinue} />
+              <CycleMeme onRefresh={handleRefresh} />
             </motion.div>
           ) : (
             <motion.div 
-              key={`stack-${globalIndex}`} 
+              key={`stack-${globalIndex}`} // Refresh stack setiap index berubah
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }}
